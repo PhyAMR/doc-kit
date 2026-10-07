@@ -1,0 +1,12 @@
+/.quarto/
+/_book/
+/_freeze/
+*_files/
+*.aux
+*.log
+*.toc
+*.out
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.spl

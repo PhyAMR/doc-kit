@@ -1,0 +1,7 @@
+# Filled into new documents by newdoc ({{AUTHOR}}, {{EMAIL}}, …).
+# Copy to ~/.config/doc-kit/author.conf.
+AUTHOR=Your Name
+AUTHOR_FULL=Your Full Name
+EMAIL=you@example.org
+AFFILIATION=Your University
+DEPARTMENT=Your Department

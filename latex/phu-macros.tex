@@ -1,0 +1,50 @@
+% phu-macros.tex: the one list of math macros.
+%
+% Read by phumacros.sty (LaTeX: papers, reports, Quarto PDF) and by the
+% Quarto `phu` filter, which hands them to MathJax for HTML. So the same
+% \R or \argmax works in every output.
+%
+% Keep it to one definition per line, using only
+%   \newcommand  \renewcommand  \providecommand  \DeclareMathOperator(*)
+% so the filter can read it. Text-mode helpers that MathJax can't use
+% belong in phunotes.sty instead.
+
+% --- number sets ------------------------------------------------------
+\providecommand{\R}{\mathbb{R}}
+\providecommand{\C}{\mathbb{C}}
+\providecommand{\N}{\mathbb{N}}
+\providecommand{\Z}{\mathbb{Z}}
+\providecommand{\Q}{\mathbb{Q}}
+
+% --- delimiters -------------------------------------------------------
+\providecommand{\abs}[1]{\left\lvert #1 \right\rvert}
+\providecommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\providecommand{\mean}[1]{\left\langle #1 \right\rangle}
+\providecommand{\sprod}[2]{\left\langle \boldsymbol{#1},\boldsymbol{#2}\right\rangle}
+\providecommand{\set}[1]{\left\{ #1 \right\}}
+
+% --- vectors and derivatives (the bits of `physics` actually used) ----
+\providecommand{\vb}[1]{\boldsymbol{#1}}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\providecommand{\dd}{\mathrm{d}}
+\providecommand{\dv}[2]{\frac{\mathrm{d}#1}{\mathrm{d}#2}}
+\providecommand{\pdv}[2]{\frac{\partial #1}{\partial #2}}
+
+% --- probability ------------------------------------------------------
+\providecommand{\E}{\mathbb{E}}
+\providecommand{\Prob}{\mathbb{P}}
+\providecommand{\Var}{\operatorname{Var}}
+\providecommand{\Cov}{\operatorname{Cov}}
+\providecommand{\indep}{\perp\!\!\!\perp}
+
+% --- operators --------------------------------------------------------
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator{\Tr}{Tr}
+\DeclareMathOperator{\sgn}{sgn}
+
+% --- colour emphasis --------------------------------------------------
+\providecommand{\red}[1]{\textcolor{red}{#1}}
+\providecommand{\blue}[1]{\textcolor{blue}{#1}}
+\providecommand{\green}[1]{\textcolor{green}{#1}}
+\providecommand{\orange}[1]{\textcolor{orange}{#1}}

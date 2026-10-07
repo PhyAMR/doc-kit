@@ -1,0 +1,28 @@
+/*-- scss:defaults --*/
+$primary: #9b0014;
+$link-color: #9b0014;
+$body-color: #1a1a1a;
+$font-family-serif: "EB Garamond", Georgia, serif;
+$font-family-sans-serif: "DM Sans", system-ui, sans-serif;
+$font-family-monospace: "DM Mono", "Fira Code", monospace;
+$font-size-root: 18px;
+$line-height-base: 1.7;
+
+/*-- scss:rules --*/
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500&family=DM+Mono&display=swap');
+
+body { font-family: $font-family-serif; }
+h1, h2, h3, h4, .sidebar, .nav-link, .quarto-title-meta { font-family: $font-family-sans-serif; }
+
+/* the same left rules as phunotes.sty */
+.theorem, .proposition, .lemma, .corollary, .conjecture,
+.definition, .example, .exercise, .solution, .remark, .proof {
+  border-left: 2px solid #c8c8c8;
+  padding: 0.1em 0 0.1em 1em;
+  margin: 1.2em 0;
+}
+.theorem, .proposition, .lemma, .corollary, .conjecture { border-left-color: #9b0014; }
+.definition, .example, .exercise { border-left-color: #1a1a1a; }
+
+/* LaTeX cells rendered to SVG by phu.lua */
+.phu-svg { display: block; margin: 1em auto; max-width: 100%; }

@@ -1,0 +1,50 @@
+title: phu
+author: Alvaro Mendez
+version: 1.0.0
+quarto-required: ">=1.4.0"
+# format: phu-pdf / phu-html / phu-epub  (books, reports, notes)
+# filters: [phu]              (only the filter, e.g. with elsevier-pdf)
+contributes:
+  filters:
+    - phu.lua
+  formats:
+    common:
+      filters:
+        - phu.lua
+      number-sections: true
+      toc: true
+      toc-depth: 3
+    pdf:
+      pdf-engine: pdflatex
+      papersize: a4
+      fontsize: 11pt
+      linestretch: 1.15
+      geometry:
+        - margin=2.3cm
+        - top=2.5cm
+        - bottom=2.6cm
+      colorlinks: true
+      linkcolor: ink
+      urlcolor: accent
+      citecolor: accent
+      highlight-style: tango
+      code-block-bg: "#f3f3f3"
+      code-block-border-left: true
+      code-overflow: wrap
+      include-in-header:
+        text: \usepackage{phunotes}
+    html:
+      theme:
+        - cosmo
+        - phu.scss
+      html-math-method: mathjax
+      callout-appearance: simple
+      code-fold: true
+      code-tools: true
+      highlight-style: tango
+      fig-format: svg
+      link-external-newwindow: true
+    epub:
+      css: phu-epub.css
+      html-math-method: mathml
+      fig-format: png

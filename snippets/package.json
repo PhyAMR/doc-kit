@@ -1,0 +1,60 @@
+{
+  "name": "phu-snippets",
+  "contributes": {
+    "snippets": [
+      {
+        "language": [
+          "tex",
+          "quarto",
+          "markdown"
+        ],
+        "path": "./math.json"
+      },
+      {
+        "language": [
+          "tex"
+        ],
+        "path": "./tex.json"
+      },
+      {
+        "language": [
+          "quarto"
+        ],
+        "path": "./quarto.json"
+      },
+      {
+        "language": [
+          "python"
+        ],
+        "path": "./python.json"
+      },
+      {
+        "language": [
+          "r",
+          "rmd"
+        ],
+        "path": "./r.json"
+      },
+      {
+        "language": [
+          "sh",
+          "bash",
+          "zsh"
+        ],
+        "path": "./sh.json"
+      },
+      {
+        "language": [
+          "rust"
+        ],
+        "path": "./rust.json"
+      },
+      {
+        "language": [
+          "julia"
+        ],
+        "path": "./julia.json"
+      }
+    ]
+  }
+}

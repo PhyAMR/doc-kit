@@ -1,0 +1,27 @@
+# Introduction {#sec-intro}
+
+Shared macros work in PDF and HTML: $\E[X] \in \R$, $\argmax_\theta \norm{x - \theta}$.
+
+::: {#def-example}
+## A definition
+Some text.
+:::
+
+::: {#thm-example}
+## A theorem
+By @def-example, $\dv{f}{x} = 0$.
+:::
+
+::: {#fig-example}
+```{=latex}
+\begin{tikzpicture}
+  \draw[->] (0,0) -- (2,0) node[right] {$x$};
+  \draw[->] (0,0) -- (0,1.5) node[above] {$y$};
+  \draw[accent, thick] (0,0) .. controls (1,1.5) .. (2,1);
+\end{tikzpicture}
+```
+
+A TikZ figure: native in the PDF, an SVG in HTML.
+:::
+
+See @fig-example and @thm-example.

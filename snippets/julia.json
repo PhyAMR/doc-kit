@@ -1,0 +1,25 @@
+{
+  "fn": {
+    "prefix": "fn",
+    "body": [
+      "\"\"\"",
+      "\t${1:name}(${2:x})",
+      "",
+      "${3:Description.}",
+      "\"\"\"",
+      "function $1($2)",
+      "\t$0",
+      "end"
+    ],
+    "description": "function with docstring"
+  },
+  "plot": {
+    "prefix": "plot",
+    "body": [
+      "using Plots",
+      "plot(${1:x}, ${2:y}, xlabel=\"${3:x}\", ylabel=\"${4:y}\", label=\"${5:data}\")",
+      "$0"
+    ],
+    "description": "Plots.jl plot"
+  }
+}

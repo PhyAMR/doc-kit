@@ -1,0 +1,96 @@
+{
+  "lib": {
+    "prefix": "lib",
+    "body": [
+      "library(tidyverse)",
+      "library(${1:ggplot2})",
+      "$0"
+    ],
+    "description": "load libraries"
+  },
+  "gg": {
+    "prefix": "gg",
+    "body": [
+      "ggplot(${1:df}, aes(x = ${2:x}, y = ${3:y}${4:, colour = group})) +",
+      "  geom_${5|point,line,col,histogram,boxplot|}() +",
+      "  labs(x = \"${6:x}\", y = \"${7:y}\") +",
+      "  theme_minimal()",
+      "$0"
+    ],
+    "description": "ggplot"
+  },
+  "ggsave": {
+    "prefix": "ggsave",
+    "body": [
+      "ggsave(\"${1:figure}.pdf\", width = ${2:6}, height = ${3:4})",
+      "$0"
+    ],
+    "description": "save ggplot"
+  },
+  "pipe": {
+    "prefix": "pipe",
+    "body": [
+      "${1:df} |>",
+      "  filter(${2:cond}) |>",
+      "  group_by(${3:g}) |>",
+      "  summarise(${4:mean = mean(x)}, .groups = \"drop\")",
+      "$0"
+    ],
+    "description": "dplyr pipeline"
+  },
+  "fn": {
+    "prefix": "fn",
+    "body": [
+      "#' ${1:Title}",
+      "#'",
+      "#' @param ${2:x} ${3:Description}",
+      "#' @return ${4:Description}",
+      "${5:name} <- function($2) {",
+      "  $0",
+      "}"
+    ],
+    "description": "function with roxygen"
+  },
+  "csv": {
+    "prefix": "csv",
+    "body": [
+      "${1:df} <- read_csv(\"${2:data.csv}\")",
+      "$0"
+    ],
+    "description": "read CSV (readr)"
+  },
+  "lm": {
+    "prefix": "lm",
+    "body": [
+      "fit <- lm(${1:y} ~ ${2:x}, data = ${3:df})",
+      "summary(fit)",
+      "$0"
+    ],
+    "description": "linear model"
+  },
+  "seed": {
+    "prefix": "seed",
+    "body": [
+      "set.seed(${1:42})",
+      "$0"
+    ],
+    "description": "set seed"
+  },
+  "for": {
+    "prefix": "for",
+    "body": [
+      "for (${1:i} in seq_along(${2:x})) {",
+      "  $0",
+      "}"
+    ],
+    "description": "for loop"
+  },
+  "map": {
+    "prefix": "map",
+    "body": [
+      "${1:out} <- map_${2|dbl,chr,lgl,df|}(${3:xs}, \\(x) ${4:x})",
+      "$0"
+    ],
+    "description": "purrr map"
+  }
+}

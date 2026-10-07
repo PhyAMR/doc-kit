@@ -1,0 +1,172 @@
+{
+  "frac": {
+    "prefix": "frac",
+    "body": [
+      "\\frac{$1}{$2}$0"
+    ],
+    "description": "fraction"
+  },
+  "sum": {
+    "prefix": "sum",
+    "body": [
+      "\\sum_{${1:i=1}}^{${2:n}} $0"
+    ],
+    "description": "sum"
+  },
+  "prod": {
+    "prefix": "prod",
+    "body": [
+      "\\prod_{${1:i=1}}^{${2:n}} $0"
+    ],
+    "description": "product"
+  },
+  "int": {
+    "prefix": "int",
+    "body": [
+      "\\int_{${1:a}}^{${2:b}} $3 \\,\\dd ${4:x}$0"
+    ],
+    "description": "integral"
+  },
+  "lim": {
+    "prefix": "lim",
+    "body": [
+      "\\lim_{${1:n} \\to ${2:\\infty}} $0"
+    ],
+    "description": "limit"
+  },
+  "dv": {
+    "prefix": "dv",
+    "body": [
+      "\\dv{$1}{$2}$0"
+    ],
+    "description": "derivative (phu-macros)"
+  },
+  "pdv": {
+    "prefix": "pdv",
+    "body": [
+      "\\pdv{$1}{$2}$0"
+    ],
+    "description": "partial derivative (phu-macros)"
+  },
+  "norm": {
+    "prefix": "norm",
+    "body": [
+      "\\norm{$1}$0"
+    ],
+    "description": "norm"
+  },
+  "abs": {
+    "prefix": "abs",
+    "body": [
+      "\\abs{$1}$0"
+    ],
+    "description": "absolute value"
+  },
+  "mean": {
+    "prefix": "mean",
+    "body": [
+      "\\mean{$1}$0"
+    ],
+    "description": "angle brackets"
+  },
+  "ket": {
+    "prefix": "ket",
+    "body": [
+      "\\ket{$1}$0"
+    ],
+    "description": "ket"
+  },
+  "bra": {
+    "prefix": "bra",
+    "body": [
+      "\\bra{$1}$0"
+    ],
+    "description": "bra"
+  },
+  "braket": {
+    "prefix": "braket",
+    "body": [
+      "\\braket{$1|$2}$0"
+    ],
+    "description": "braket"
+  },
+  "pmat": {
+    "prefix": "pmat",
+    "body": [
+      "\\begin{pmatrix}",
+      "\t$1",
+      "\\end{pmatrix}$0"
+    ],
+    "description": "matrix ( )"
+  },
+  "bmat": {
+    "prefix": "bmat",
+    "body": [
+      "\\begin{bmatrix}",
+      "\t$1",
+      "\\end{bmatrix}$0"
+    ],
+    "description": "matrix [ ]"
+  },
+  "cases": {
+    "prefix": "cases",
+    "body": [
+      "\\begin{cases}",
+      "\t$1 & \\text{if } $2 \\\\\\\\",
+      "\t$3 & \\text{otherwise}",
+      "\\end{cases}$0"
+    ],
+    "description": "cases"
+  },
+  "aligned": {
+    "prefix": "aligned",
+    "body": [
+      "\\begin{aligned}",
+      "\t$1 &= $2 \\\\\\\\",
+      "\\end{aligned}$0"
+    ],
+    "description": "aligned (inside an equation)"
+  },
+  "text": {
+    "prefix": "text",
+    "body": [
+      "\\text{$1}$0"
+    ],
+    "description": "text in math"
+  },
+  "bf": {
+    "prefix": "bf",
+    "body": [
+      "\\vb{$1}$0"
+    ],
+    "description": "bold vector"
+  },
+  "hat": {
+    "prefix": "hat",
+    "body": [
+      "\\hat{$1}$0"
+    ],
+    "description": "hat"
+  },
+  "bar": {
+    "prefix": "bar",
+    "body": [
+      "\\bar{$1}$0"
+    ],
+    "description": "bar"
+  },
+  "set": {
+    "prefix": "set",
+    "body": [
+      "\\set{$1}$0"
+    ],
+    "description": "set braces"
+  },
+  "exp": {
+    "prefix": "Ex",
+    "body": [
+      "\\E\\left[$1\\right]$0"
+    ],
+    "description": "expectation"
+  }
+}

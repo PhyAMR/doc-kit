@@ -1,0 +1,25 @@
+project:
+  type: book
+  output-dir: _book
+
+book:
+  title: "{{TITLE}}"
+  author: "{{AUTHOR}}"
+  date: today
+  chapters:
+    - index.qmd
+    - chapters/01-introduction.qmd
+
+bibliography: references.bib
+
+# phu-* formats come from doc-kit/extensions/phu (linked in _extensions/)
+format:
+  phu-html: default
+  phu-pdf:
+    documentclass: scrbook
+
+crossref:
+  chapters: true
+
+execute:
+  freeze: auto

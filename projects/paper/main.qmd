@@ -1,0 +1,39 @@
+---
+title: "{{TITLE}}"
+author:
+  - name: "{{AUTHOR_FULL}}"
+    email: "{{EMAIL}}"
+    affiliations:
+      - name: "{{AFFILIATION}}"
+        department: "{{DEPARTMENT}}"
+date: today
+abstract: |
+  Abstract.
+keywords:
+  - keyword
+bibliography: references.bib
+
+# elsevier-pdf: doc-kit/extensions/quarto-journals (linked in _extensions/)
+# keep-tex: true when the journal wants the .tex source
+format:
+  elsevier-pdf:
+    keep-tex: false
+    journal:
+      name: Journal
+      formatting: preprint
+      model: 3p
+      layout: twocolumn
+      cite-style: authoryear
+
+filters:
+  - phu
+include-in-header:
+  text: |
+    \usepackage{phumacros}
+    \usepackage{booktabs}
+    \usepackage{subcaption}
+---
+
+# Introduction {#sec-intro}
+
+$\E[X] \in \R$.

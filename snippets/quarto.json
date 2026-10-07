@@ -1,0 +1,431 @@
+{
+  "eq": {
+    "prefix": "eq",
+    "body": [
+      "$$",
+      "$1",
+      "$$ {#eq-$2}",
+      "$0"
+    ],
+    "description": "numbered equation (@eq-...)"
+  },
+  "ali": {
+    "prefix": "ali",
+    "body": [
+      "$$",
+      "\\begin{aligned}",
+      "$1 &= $2 \\\\\\\\",
+      "\\end{aligned}",
+      "$$ {#eq-$3}",
+      "$0"
+    ],
+    "description": "aligned equation"
+  },
+  "sec": {
+    "prefix": "sec",
+    "body": [
+      "## $1 {#sec-$2}",
+      "",
+      "$0"
+    ],
+    "description": "section (@sec-...)"
+  },
+  "ssec": {
+    "prefix": "ssec",
+    "body": [
+      "### $1 {#sec-$2}",
+      "",
+      "$0"
+    ],
+    "description": "subsection"
+  },
+  "fig": {
+    "prefix": "fig",
+    "body": [
+      "![$1](${2:images/}){#fig-$3 width=${4:80%}}",
+      "$0"
+    ],
+    "description": "figure (@fig-...)"
+  },
+  "tab": {
+    "prefix": "tab",
+    "body": [
+      "| $1 | $2 |",
+      "|---|---|",
+      "| $3 | $4 |",
+      "",
+      ": $5 {#tbl-$6}",
+      "$0"
+    ],
+    "description": "table (@tbl-...)"
+  },
+  "tikz": {
+    "prefix": "tikz",
+    "body": [
+      "::: {#fig-$1}",
+      "```{=latex}",
+      "\\begin{tikzpicture}",
+      "$2",
+      "\\end{tikzpicture}",
+      "```",
+      "",
+      "$3",
+      ":::",
+      "$0"
+    ],
+    "description": "TikZ figure: native in PDF, SVG in HTML (phu filter)"
+  },
+  "latex": {
+    "prefix": "latex",
+    "body": [
+      "```{=latex}",
+      "$1",
+      "```",
+      "$0"
+    ],
+    "description": "raw LaTeX cell (PDF; drawings also become SVG in HTML)"
+  },
+  "texsvg": {
+    "prefix": "texsvg",
+    "body": [
+      "```{=latex}",
+      "% svg",
+      "$1",
+      "```",
+      "$0"
+    ],
+    "description": "raw LaTeX cell forced to SVG in HTML"
+  },
+  "pdfonly": {
+    "prefix": "pdfonly",
+    "body": [
+      "::: {.content-visible when-format=\"pdf\"}",
+      "$1",
+      ":::",
+      "$0"
+    ],
+    "description": "only in the PDF"
+  },
+  "htmlonly": {
+    "prefix": "htmlonly",
+    "body": [
+      "::: {.content-visible when-format=\"html\"}",
+      "$1",
+      ":::",
+      "$0"
+    ],
+    "description": "only in HTML"
+  },
+  "proof": {
+    "prefix": "proof",
+    "body": [
+      "::: {.proof}",
+      "$1",
+      ":::",
+      "$0"
+    ],
+    "description": "proof"
+  },
+  "rem": {
+    "prefix": "rem",
+    "body": [
+      "::: {.remark}",
+      "$1",
+      ":::",
+      "$0"
+    ],
+    "description": "remark"
+  },
+  "sol": {
+    "prefix": "sol",
+    "body": [
+      "::: {.solution}",
+      "$1",
+      ":::",
+      "$0"
+    ],
+    "description": "solution"
+  },
+  "callout": {
+    "prefix": "callout",
+    "body": [
+      "::: {.callout-${1|note,tip,warning,important,caution|}}",
+      "## $2",
+      "$3",
+      ":::",
+      "$0"
+    ],
+    "description": "callout"
+  },
+  "cols": {
+    "prefix": "cols",
+    "body": [
+      ":::: {.columns}",
+      "::: {.column width=\"50%\"}",
+      "$1",
+      ":::",
+      "::: {.column width=\"50%\"}",
+      "$2",
+      ":::",
+      "::::",
+      "$0"
+    ],
+    "description": "two columns"
+  },
+  "py": {
+    "prefix": "py",
+    "body": [
+      "```{python}",
+      "#| label: $1",
+      "$2",
+      "```",
+      "$0"
+    ],
+    "description": "python cell"
+  },
+  "pyfig": {
+    "prefix": "pyfig",
+    "body": [
+      "```{python}",
+      "#| label: fig-$1",
+      "#| fig-cap: \"$2\"",
+      "$3",
+      "```",
+      "$0"
+    ],
+    "description": "python figure cell (@fig-...)"
+  },
+  "cite": {
+    "prefix": "cite",
+    "body": [
+      "[@$1]$0"
+    ],
+    "description": "citation"
+  },
+  "newpage": {
+    "prefix": "newpage",
+    "body": [
+      "{{< pagebreak >}}",
+      "$0"
+    ],
+    "description": "page break (all formats)"
+  },
+  "thm": {
+    "prefix": "thm",
+    "body": [
+      "::: {#thm-$1}",
+      "## $2",
+      "$3",
+      ":::",
+      "$0"
+    ],
+    "description": "Theorem (@thm-...)"
+  },
+  "lem": {
+    "prefix": "lem",
+    "body": [
+      "::: {#lem-$1}",
+      "## $2",
+      "$3",
+      ":::",
+      "$0"
+    ],
+    "description": "Lemma (@lem-...)"
+  },
+  "prop": {
+    "prefix": "prop",
+    "body": [
+      "::: {#prop-$1}",
+      "## $2",
+      "$3",
+      ":::",
+      "$0"
+    ],
+    "description": "Proposition (@prop-...)"
+  },
+  "cor": {
+    "prefix": "cor",
+    "body": [
+      "::: {#cor-$1}",
+      "## $2",
+      "$3",
+      ":::",
+      "$0"
+    ],
+    "description": "Corollary (@cor-...)"
+  },
+  "def": {
+    "prefix": "def",
+    "body": [
+      "::: {#def-$1}",
+      "## $2",
+      "$3",
+      ":::",
+      "$0"
+    ],
+    "description": "Definition (@def-...)"
+  },
+  "exm": {
+    "prefix": "exm",
+    "body": [
+      "::: {#exm-$1}",
+      "## $2",
+      "$3",
+      ":::",
+      "$0"
+    ],
+    "description": "Example (@exm-...)"
+  },
+  "exr": {
+    "prefix": "exr",
+    "body": [
+      "::: {#exr-$1}",
+      "## $2",
+      "$3",
+      ":::",
+      "$0"
+    ],
+    "description": "Exercise (@exr-...)"
+  },
+  "hdr": {
+    "prefix": "hdr",
+    "body": [
+      "---",
+      "title: \"${1:Title}\"",
+      "author: \"Alvaro Mendez\"",
+      "date: today",
+      "format:",
+      "  pdf:",
+      "    include-in-header:",
+      "      text: \\\\usepackage{phunotes}",
+      "  html: default",
+      "  epub: default",
+      "filters:",
+      "  - /home/phuniverse/code/doc-kit/extensions/phu/phu.lua",
+      "---",
+      "",
+      "$0"
+    ],
+    "description": "header: plain note (PDF, HTML, EPUB; kit macros)"
+  },
+  "hdrpy": {
+    "prefix": "hdrpy",
+    "body": [
+      "---",
+      "title: \"${1:Title}\"",
+      "author: \"Alvaro Mendez\"",
+      "date: today",
+      "jupyter: python3",
+      "execute:",
+      "  echo: true",
+      "  warning: false",
+      "format:",
+      "  pdf:",
+      "    include-in-header:",
+      "      text: \\\\usepackage{phunotes}",
+      "  html: default",
+      "  epub: default",
+      "filters:",
+      "  - /home/phuniverse/code/doc-kit/extensions/phu/phu.lua",
+      "---",
+      "",
+      "$0"
+    ],
+    "description": "header: Jupyter / Python notebook"
+  },
+  "hdrr": {
+    "prefix": "hdrr",
+    "body": [
+      "---",
+      "title: \"${1:Title}\"",
+      "author: \"Alvaro Mendez\"",
+      "date: today",
+      "engine: knitr",
+      "execute:",
+      "  echo: true",
+      "  warning: false",
+      "format:",
+      "  pdf:",
+      "    include-in-header:",
+      "      text: \\\\usepackage{phunotes}",
+      "  html: default",
+      "  epub: default",
+      "filters:",
+      "  - /home/phuniverse/code/doc-kit/extensions/phu/phu.lua",
+      "---",
+      "",
+      "$0"
+    ],
+    "description": "header: knitr / R (python cells via reticulate)"
+  },
+  "hdrjl": {
+    "prefix": "hdrjl",
+    "body": [
+      "---",
+      "title: \"${1:Title}\"",
+      "author: \"Alvaro Mendez\"",
+      "date: today",
+      "engine: julia",
+      "execute:",
+      "  echo: true",
+      "  warning: false",
+      "format:",
+      "  pdf:",
+      "    include-in-header:",
+      "      text: \\\\usepackage{phunotes}",
+      "  html: default",
+      "  epub: default",
+      "filters:",
+      "  - /home/phuniverse/code/doc-kit/extensions/phu/phu.lua",
+      "---",
+      "",
+      "$0"
+    ],
+    "description": "header: Julia"
+  },
+  "hdrrep": {
+    "prefix": "hdrrep",
+    "body": [
+      "---",
+      "title: \"${1:Title}\"",
+      "author: \"Alvaro Mendez\"",
+      "date: today",
+      "toc: true",
+      "number-sections: true",
+      "format:",
+      "  pdf:",
+      "    documentclass: scrartcl",
+      "    include-in-header:",
+      "      text: \\\\usepackage{phunotes}",
+      "  html: default",
+      "  epub: default",
+      "filters:",
+      "  - /home/phuniverse/code/doc-kit/extensions/phu/phu.lua",
+      "---",
+      "",
+      "$0"
+    ],
+    "description": "header: report (KOMA article, TOC, numbered sections)"
+  },
+  "hdrslides": {
+    "prefix": "hdrslides",
+    "description": "header: reveal.js slides",
+    "body": [
+      "---",
+      "title: \"${1:Title}\"",
+      "author: \"Alvaro Mendez\"",
+      "date: today",
+      "format:",
+      "  revealjs:",
+      "    slide-number: true",
+      "    html-math-method: mathjax",
+      "filters:",
+      "  - /home/phuniverse/code/doc-kit/extensions/phu/phu.lua",
+      "---",
+      "",
+      "## ${2:First slide}",
+      "",
+      "$0"
+    ]
+  }
+}

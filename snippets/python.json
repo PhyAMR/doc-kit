@@ -1,0 +1,278 @@
+{
+  "imp": {
+    "prefix": "imp",
+    "body": [
+      "import numpy as np",
+      "import matplotlib.pyplot as plt",
+      "$0"
+    ],
+    "description": "numpy + matplotlib imports"
+  },
+  "impsci": {
+    "prefix": "impsci",
+    "body": [
+      "import numpy as np",
+      "import pandas as pd",
+      "import matplotlib.pyplot as plt",
+      "from scipy import optimize, integrate, stats",
+      "$0"
+    ],
+    "description": "scientific stack imports"
+  },
+  "main": {
+    "prefix": "main",
+    "body": [
+      "def main() -> None:",
+      "\t${1:pass}",
+      "",
+      "",
+      "if __name__ == \"__main__\":",
+      "\tmain()",
+      ""
+    ],
+    "description": "main() entry point"
+  },
+  "argp": {
+    "prefix": "argp",
+    "body": [
+      "import argparse",
+      "",
+      "",
+      "def parse_args() -> argparse.Namespace:",
+      "\tp = argparse.ArgumentParser(description=\"$1\")",
+      "\tp.add_argument(\"${2:input}\", type=${3:str})",
+      "\tp.add_argument(\"--${4:n}\", type=${5:int}, default=${6:100})",
+      "\treturn p.parse_args()",
+      "$0"
+    ],
+    "description": "argparse parser"
+  },
+  "def": {
+    "prefix": "def",
+    "body": [
+      "def ${1:name}(${2:x}: ${3:np.ndarray}) -> ${4:np.ndarray}:",
+      "\t\"\"\"${5:Summary.}",
+      "",
+      "\tParameters",
+      "\t----------",
+      "\t$2 : $3",
+      "\t\t${6:Description.}",
+      "",
+      "\tReturns",
+      "\t-------",
+      "\t$4",
+      "\t\"\"\"",
+      "\t$0"
+    ],
+    "description": "function with numpy docstring"
+  },
+  "dc": {
+    "prefix": "dc",
+    "body": [
+      "from dataclasses import dataclass",
+      "",
+      "",
+      "@dataclass",
+      "class ${1:Params}:",
+      "\t${2:n}: ${3:int} = ${4:100}",
+      "\t$0"
+    ],
+    "description": "dataclass"
+  },
+  "fig": {
+    "prefix": "fig",
+    "body": [
+      "fig, ax = plt.subplots(figsize=(${1:6}, ${2:4}))",
+      "ax.plot(${3:x}, ${4:y}, label=\"${5:data}\")",
+      "ax.set_xlabel(r\"${6:\\$x\\$}\")",
+      "ax.set_ylabel(r\"${7:\\$y\\$}\")",
+      "ax.legend()",
+      "fig.tight_layout()",
+      "$0"
+    ],
+    "description": "figure with one axis"
+  },
+  "figs": {
+    "prefix": "figs",
+    "body": [
+      "fig, axes = plt.subplots(${1:2}, ${2:2}, figsize=(${3:10}, ${4:8}), sharex=${5:True})",
+      "for ax in axes.flat:",
+      "\t${6:ax.plot(x, y)}",
+      "fig.tight_layout()",
+      "$0"
+    ],
+    "description": "grid of subplots"
+  },
+  "savefig": {
+    "prefix": "savefig",
+    "body": [
+      "fig.savefig(\"${1:figure}.${2|pdf,png,svg|}\", bbox_inches=\"tight\"${3:, dpi=300})",
+      "$0"
+    ],
+    "description": "save figure"
+  },
+  "errbar": {
+    "prefix": "errbar",
+    "body": [
+      "ax.errorbar(${1:x}, ${2:y}, yerr=${3:dy}, fmt=\"${4:o}\", capsize=3, label=\"${5:data}\")",
+      "$0"
+    ],
+    "description": "error bars"
+  },
+  "hist": {
+    "prefix": "hist",
+    "body": [
+      "ax.hist(${1:data}, bins=${2:50}, density=${3:True}, histtype=\"step\", label=\"${4:data}\")",
+      "$0"
+    ],
+    "description": "histogram"
+  },
+  "rng": {
+    "prefix": "rng",
+    "body": [
+      "rng = np.random.default_rng(${1:42})",
+      "$0"
+    ],
+    "description": "seeded random generator"
+  },
+  "fit": {
+    "prefix": "fit",
+    "body": [
+      "from scipy.optimize import curve_fit",
+      "",
+      "",
+      "def model(x, ${1:a, b}):",
+      "\treturn ${2:a * x + b}",
+      "",
+      "",
+      "popt, pcov = curve_fit(model, ${3:x}, ${4:y}, p0=[${5:1, 0}]${6:, sigma=dy, absolute_sigma=True})",
+      "perr = np.sqrt(np.diag(pcov))",
+      "$0"
+    ],
+    "description": "curve_fit with errors"
+  },
+  "ode": {
+    "prefix": "ode",
+    "body": [
+      "from scipy.integrate import solve_ivp",
+      "",
+      "",
+      "def rhs(t, y${1:, *args}):",
+      "\treturn ${2:-y}",
+      "",
+      "",
+      "sol = solve_ivp(rhs, (${3:0}, ${4:10}), ${5:[1.0]}, t_eval=np.linspace($3, $4, ${6:500}), rtol=1e-8)",
+      "$0"
+    ],
+    "description": "solve_ivp ODE"
+  },
+  "quad": {
+    "prefix": "quad",
+    "body": [
+      "from scipy.integrate import quad",
+      "",
+      "val, err = quad(lambda x: ${1:np.exp(-x**2)}, ${2:-np.inf}, ${3:np.inf})",
+      "$0"
+    ],
+    "description": "numerical integral"
+  },
+  "mc": {
+    "prefix": "mc",
+    "body": [
+      "rng = np.random.default_rng(${1:42})",
+      "samples = np.array([${2:simulate(rng)} for _ in range(${3:10_000})])",
+      "mean, err = samples.mean(), samples.std(ddof=1) / np.sqrt(len(samples))",
+      "$0"
+    ],
+    "description": "Monte Carlo mean ± error"
+  },
+  "csv": {
+    "prefix": "csv",
+    "body": [
+      "df = pd.read_csv(\"${1:data.csv}\"${2:, comment=\"#\"})",
+      "$0"
+    ],
+    "description": "read CSV with pandas"
+  },
+  "npz": {
+    "prefix": "npz",
+    "body": [
+      "np.savez(\"${1:results}.npz\", ${2:x=x, y=y})",
+      "data = np.load(\"$1.npz\")",
+      "$0"
+    ],
+    "description": "save/load npz"
+  },
+  "here": {
+    "prefix": "here",
+    "body": [
+      "from pathlib import Path",
+      "",
+      "HERE = Path(__file__).resolve().parent",
+      "$0"
+    ],
+    "description": "folder of this file"
+  },
+  "timer": {
+    "prefix": "timer",
+    "body": [
+      "import time",
+      "",
+      "t0 = time.perf_counter()",
+      "$1",
+      "print(f\"${2:elapsed}: {time.perf_counter() - t0:.3f} s\")",
+      "$0"
+    ],
+    "description": "time a block"
+  },
+  "tqdm": {
+    "prefix": "tqdm",
+    "body": [
+      "from tqdm import tqdm",
+      "",
+      "for ${1:i} in tqdm(range(${2:n})):",
+      "\t$0"
+    ],
+    "description": "loop with progress bar"
+  },
+  "log": {
+    "prefix": "log",
+    "body": [
+      "import logging",
+      "",
+      "logging.basicConfig(level=logging.${1|INFO,DEBUG,WARNING|}, format=\"%(asctime)s %(levelname)s %(message)s\")",
+      "log = logging.getLogger(__name__)",
+      "$0"
+    ],
+    "description": "logging setup"
+  },
+  "jit": {
+    "prefix": "jit",
+    "body": [
+      "from numba import njit",
+      "",
+      "",
+      "@njit(cache=True)",
+      "def ${1:kernel}(${2:x}):",
+      "\t$0"
+    ],
+    "description": "numba njit function"
+  },
+  "test": {
+    "prefix": "test",
+    "body": [
+      "def test_${1:name}():",
+      "\t${2:assert result == pytest.approx(expected, rel=1e-6)}",
+      "$0"
+    ],
+    "description": "pytest test"
+  },
+  "ifmain": {
+    "prefix": "ifmain",
+    "body": [
+      "if __name__ == \"__main__\":",
+      "\t${1:main()}"
+    ],
+    "description": "if __name__ == '__main__'"
+  }
+}

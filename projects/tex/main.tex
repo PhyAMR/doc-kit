@@ -1,0 +1,19 @@
+\documentclass[11pt,a4paper]{scrartcl}
+% phunotes = phumacros + the notes look (doc-kit/latex, via $TEXMFHOME).
+% For a journal class, load only \usepackage{phumacros}.
+\usepackage{phunotes}
+\usepackage[colorlinks,linkcolor=ink,citecolor=accent,urlcolor=accent]{hyperref}
+
+\title{{{TITLE}}}
+\author{{{AUTHOR}}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}\label{sec:intro}
+$\E[X] \in \R$.
+
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}

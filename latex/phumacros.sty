@@ -1,0 +1,17 @@
+% phumacros.sty: math packages + the shared macros. Safe to load in any
+% document class (elsarticle, revtex, scrbook...): no layout, no fonts.
+%
+%   \usepackage{phumacros}
+%
+% Found through $TEXMFHOME/tex/latex/phu (a symlink to doc-kit/latex, made by install.sh).
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{phumacros}[2026/10/05 shared math macros]
+
+\RequirePackage{amsmath,amssymb,mathtools}
+\RequirePackage{bm}
+\RequirePackage{braket}   % \ket \bra \braket
+\RequirePackage{xcolor}
+
+\input{phu-macros.tex}
+
+\endinput

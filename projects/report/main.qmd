@@ -1,0 +1,14 @@
+---
+title: "{{TITLE}}"
+author: "{{AUTHOR}}"
+date: today
+bibliography: references.bib
+format:
+  phu-pdf:
+    documentclass: scrartcl
+  phu-html: default
+---
+
+# Introduction {#sec-intro}
+
+$\E[X] \in \R$.

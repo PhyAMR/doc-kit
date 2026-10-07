@@ -1,0 +1,91 @@
+{
+  "strict": {
+    "prefix": "strict",
+    "body": [
+      "#!/usr/bin/env bash",
+      "# ${1:what this does}",
+      "set -euo pipefail",
+      "",
+      "$0"
+    ],
+    "description": "bash script header"
+  },
+  "die": {
+    "prefix": "die",
+    "body": [
+      "die() { echo \"${1:\\$(basename \"\\$0\")}: \\$*\" >&2; exit 1; }",
+      "$0"
+    ],
+    "description": "die helper"
+  },
+  "usage": {
+    "prefix": "usage",
+    "body": [
+      "usage() {",
+      "\tcat <<EOF",
+      "usage: ${1:\\$(basename \"\\$0\")} [-h] ${2:FILE}",
+      "EOF",
+      "}",
+      "$0"
+    ],
+    "description": "usage text"
+  },
+  "args": {
+    "prefix": "args",
+    "body": [
+      "while ((\\$#)); do",
+      "\tcase \\$1 in",
+      "\t\t-h | --help) usage; exit 0 ;;",
+      "\t\t-${1:o} | --${2:out}) ${3:out}=\\$2; shift 2 ;;",
+      "\t\t*) ${4:args+=(\"\\$1\")}; shift ;;",
+      "\tesac",
+      "done",
+      "$0"
+    ],
+    "description": "argument loop"
+  },
+  "tmp": {
+    "prefix": "tmp",
+    "body": [
+      "tmp=\\$(mktemp -d)",
+      "trap 'rm -rf \"\\$tmp\"' EXIT",
+      "$0"
+    ],
+    "description": "temp dir removed on exit"
+  },
+  "forf": {
+    "prefix": "forf",
+    "body": [
+      "for f in ${1:*.pdf}; do",
+      "\t$0",
+      "done"
+    ],
+    "description": "loop over files"
+  },
+  "readl": {
+    "prefix": "readl",
+    "body": [
+      "while IFS= read -r ${1:line}; do",
+      "\t$0",
+      "done < ${2:file}"
+    ],
+    "description": "read lines"
+  },
+  "need": {
+    "prefix": "need",
+    "body": [
+      "command -v ${1:jq} >/dev/null || die \"$1 is not installed\"",
+      "$0"
+    ],
+    "description": "require a command"
+  },
+  "confirm": {
+    "prefix": "confirm",
+    "body": [
+      "read -rp \"${1:Continue?} [y/N] \" ans",
+      "[[ \\$ans == [yY]* ]] || exit 0",
+      "$0"
+    ],
+    "description": "yes/no prompt"
+  }
+}

@@ -1,0 +1,110 @@
+% phunotes.sty: the look of notes, books and reports (from the Master
+% notes preamble). Loads phumacros.
+%
+%   Quarto:  format: phu-pdf          (the phu extension loads it)
+%   LaTeX:   \usepackage{phunotes}
+%
+% Theorem-like environments get a thin left rule: accent for results,
+% ink for definitions, faint for remarks. Quarto defines the
+% environments itself (::: {#thm-...}); in plain LaTeX this package
+% defines any that are missing at \begin{document}.
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{phunotes}[2026/10/05 notes look]
+
+\RequirePackage{phumacros}
+\RequirePackage{amsthm}
+\RequirePackage{microtype}
+\RequirePackage{etoolbox}
+\RequirePackage{enumitem}
+\RequirePackage{fvextra}
+\RequirePackage{tikz}
+\RequirePackage[framemethod=TikZ]{mdframed}
+\usetikzlibrary{calc,arrows.meta,positioning,shapes.geometric,fit,
+                decorations.pathreplacing,matrix,patterns}
+
+% --- colours ----------------------------------------------------------
+\definecolor{accent}  {HTML}{9b0014}
+\definecolor{ink}     {HTML}{1a1a1a}
+\definecolor{inkFaint}{HTML}{6b6b6b}
+\definecolor{rule}    {HTML}{c8c8c8}
+\definecolor{codeBg}  {HTML}{f3f3f3}
+\color{ink}
+
+% --- headings (KOMA classes only: scrbook, scrartcl, scrreprt) --------
+\ifdefined\addtokomafont
+  \addtokomafont{disposition}{\normalfont}
+  \setkomafont{section}      {\normalfont\Large\bfseries}
+  \setkomafont{subsection}   {\normalfont\large\bfseries}
+  \setkomafont{subsubsection}{\normalfont\normalsize\bfseries}
+  \setkomafont{paragraph}    {\normalfont\normalsize\itshape}
+\fi
+
+% --- theorem-like environments ----------------------------------------
+\mdfdefinestyle{phuAccent}{
+  linewidth=1.2pt, linecolor=accent,
+  topline=false, bottomline=false, rightline=false,
+  innertopmargin=2pt, innerbottommargin=4pt,
+  innerleftmargin=12pt, innerrightmargin=0pt,
+  skipabove=8pt, skipbelow=8pt,
+}
+\mdfdefinestyle{phuInk}  {style=phuAccent, linecolor=ink}
+\mdfdefinestyle{phuFaint}{style=phuAccent, linecolor=rule, linewidth=0.9pt}
+
+\newcommand{\phuWrap}[2]{% #1 style, #2 environment
+  \BeforeBeginEnvironment{#2}{\begin{mdframed}[style=#1]}%
+  \AfterEndEnvironment{#2}{\end{mdframed}}}
+
+\phuWrap{phuAccent}{theorem}
+\phuWrap{phuAccent}{proposition}
+\phuWrap{phuAccent}{lemma}
+\phuWrap{phuAccent}{corollary}
+\phuWrap{phuAccent}{conjecture}
+\phuWrap{phuInk}{definition}
+\phuWrap{phuInk}{example}
+\phuWrap{phuInk}{exercise}
+\phuWrap{phuFaint}{solution}
+\phuWrap{phuFaint}{remark}
+
+\renewcommand{\qedsymbol}{$\square$}
+
+% Plain LaTeX: define what Quarto would have defined.
+\makeatletter
+\AtEndPreamble{%
+  \@ifundefined{c@chapter}{\def\phu@within{section}}{\def\phu@within{chapter}}%
+  \theoremstyle{plain}%
+  \@ifundefined{theorem}{\newtheorem{theorem}{Theorem}[\phu@within]}{}%
+  \@ifundefined{proposition}{\newtheorem{proposition}[theorem]{Proposition}}{}%
+  \@ifundefined{lemma}{\newtheorem{lemma}[theorem]{Lemma}}{}%
+  \@ifundefined{corollary}{\newtheorem{corollary}[theorem]{Corollary}}{}%
+  \@ifundefined{conjecture}{\newtheorem{conjecture}[theorem]{Conjecture}}{}%
+  \theoremstyle{definition}%
+  \@ifundefined{definition}{\newtheorem{definition}{Definition}[\phu@within]}{}%
+  \@ifundefined{example}{\newtheorem{example}{Example}[\phu@within]}{}%
+  \@ifundefined{exercise}{\newtheorem{exercise}{Exercise}[\phu@within]}{}%
+  \theoremstyle{remark}%
+  \@ifundefined{remark}{\newtheorem*{remark}{Remark}}{}%
+  \@ifundefined{solution}{\newtheorem*{solution}{Solution}}{}%
+}
+\makeatother
+
+% --- code and code output ---------------------------------------------
+\mdfdefinestyle{phuCode}{
+  linewidth=1.4pt, linecolor=inkFaint,
+  topline=false, bottomline=false, rightline=false,
+  innertopmargin=2pt, innerbottommargin=4pt,
+  innerleftmargin=10pt, innerrightmargin=0pt,
+  skipabove=2pt, skipbelow=8pt, backgroundcolor=codeBg,
+}
+\newenvironment{codeoutput}
+  {\begin{mdframed}[style=phuCode]\footnotesize\ttfamily}
+  {\end{mdframed}}
+\fvset{breaklines=true, breakanywhere=true, breakautoindent=true}
+
+% --- spacing ----------------------------------------------------------
+\setlist{itemsep=2pt, topsep=4pt, parsep=0pt}
+\setlength{\parskip}{0.4em plus 0.1em minus 0.05em}
+\setlength{\parindent}{0pt}
+\setlength{\arraycolsep}{4pt}
+\renewcommand{\arraystretch}{1.1}
+
+\endinput

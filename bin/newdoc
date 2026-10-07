@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+"""newdoc: start a Quarto book/report/paper or a LaTeX document from doc-kit.
+
+Shared files are never copied. In a Quarto project, _extensions is a
+symlink to the kit's extensions/ (Quarto doesn't follow links *inside*
+_extensions, so the whole folder is linked); LaTeX finds phunotes and
+phumacros through $TEXMFHOME (install.sh links them). So fixing the kit fixes
+every document. Author details: ~/.config/doc-kit/author.conf.
+
+  newdoc book   ~/Master/4sem/Thesis/notes -t "Thesis notes"
+  newdoc report reports/lab1             -t "Lab 1"
+  newdoc paper  ~/Work/CMB/v2   -t "Large-angle statistics"
+  newdoc tex    draft                    -t "Draft"
+  newdoc link   [DIR]          # point an existing Quarto folder's _extensions at the kit
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import shutil
+import sys
+from pathlib import Path
+
+KIT = Path(__file__).resolve().parent.parent   # the doc-kit checkout
+AUTHOR_CONF = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "doc-kit" / "author.conf"
+PROJECTS = KIT / "projects"
+EXTENSIONS = KIT / "extensions"
+
+KINDS = ("book", "report", "paper", "tex")
+GITIGNORE = {"book": "quarto", "report": "quarto", "paper": "quarto", "tex": "tex"}
+
+
+def die(msg: str) -> None:
+    print(f"newdoc: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def slugify(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-") or "main"
+
+
+def author_vars() -> dict[str, str]:
+    out = {}
+    conf = AUTHOR_CONF
+    if conf.exists():
+        for line in conf.read_text().splitlines():
+            if "=" in line and not line.lstrip().startswith("#"):
+                key, val = line.split("=", 1)
+                out[key.strip()] = val.strip()
+    return out
+
+
+def link_extensions(dest: Path) -> None:
+    link = dest / "_extensions"
+    if link.is_symlink():
+        link.unlink()
+    elif link.exists():   # an old per-project copy
+        backup = dest / "_extensions.bak"
+        if backup.exists():
+            die(f"{link} is a real folder and {backup} already exists; move one of them")
+        link.rename(backup)
+        print(f"  moved the old copy to {backup.name} (delete it once renders work)")
+    link.symlink_to(EXTENSIONS)
+    print(f"  linked _extensions -> {EXTENSIONS}")
+
+
+def cmd_new(kind: str, dest: Path, title: str | None) -> None:
+    if dest.exists() and any(dest.iterdir()):
+        die(f"{dest} is not empty (use `newdoc link {dest}` for an existing project)")
+    title = title or dest.name.replace("-", " ").replace("_", " ").capitalize()
+    subs = {"TITLE": title, **author_vars()}
+    stem = slugify(dest.name)
+
+    src = PROJECTS / kind
+    for path in sorted(src.rglob("*")):
+        rel = path.relative_to(src)
+        if rel.name in ("main.qmd", "main.tex"):   # single documents take the folder's name
+            rel = rel.with_name(stem + path.suffix)
+        target = dest / rel
+        if path.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        text = path.read_text()
+        yaml = path.suffix in (".qmd", ".yml")   # values sit in "..." there
+        for key, val in subs.items():
+            text = text.replace("{{" + key + "}}", val.replace('"', '\\"') if yaml else val)
+        target.write_text(text)
+
+    shutil.copy(PROJECTS / f"{GITIGNORE[kind]}.gitignore", dest / ".gitignore")
+    if kind != "tex":
+        link_extensions(dest)
+    main = next((p for p in (dest / f"{stem}.qmd", dest / f"{stem}.tex",
+                             dest / "chapters/01-introduction.qmd") if p.exists()), dest)
+    print(f"{kind} created: {main}")
+
+
+def cmd_link(dest: Path) -> None:
+    if not dest.is_dir():
+        die(f"{dest} is not a folder")
+    link_extensions(dest)
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(prog="newdoc", description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("kind", choices=[*KINDS, "link"])
+    p.add_argument("dir", nargs="?", default=".")
+    p.add_argument("-t", "--title")
+    args = p.parse_args()
+    dest = Path(args.dir).expanduser().resolve()
+    if args.kind == "link":
+        cmd_link(dest)
+    else:
+        cmd_new(args.kind, dest, args.title)
+
+
+if __name__ == "__main__":
+    main()
