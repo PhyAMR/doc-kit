@@ -30,7 +30,7 @@
   "lim": {
     "prefix": "lim",
     "body": [
-      "\\lim_{${1:n} \\to ${2:\\infty}} $0"
+      "\\lim_{${1:n} \\to ${2:\\\\infty}} $0"
     ],
     "description": "limit"
   },

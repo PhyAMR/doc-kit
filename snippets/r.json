@@ -88,7 +88,7 @@
   "map": {
     "prefix": "map",
     "body": [
-      "${1:out} <- map_${2|dbl,chr,lgl,df|}(${3:xs}, \\(x) ${4:x})",
+      "${1:out} <- map_${2|dbl,chr,lgl,df|}(${3:xs}, \\\\(x) ${4:x})",
       "$0"
     ],
     "description": "purrr map"
