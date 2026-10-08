@@ -27,9 +27,8 @@ contributes:
       linkcolor: ink
       urlcolor: accent
       citecolor: accent
-      highlight-style: tango
-      code-block-bg: "#f3f3f3"
-      code-block-border-left: true
+      highlight-style: phu.theme
+      code-block-bg: false
       code-overflow: wrap
       include-in-header:
         text: \usepackage{phunotes}
@@ -41,7 +40,7 @@ contributes:
       callout-appearance: simple
       code-fold: true
       code-tools: true
-      highlight-style: tango
+      highlight-style: phu.theme
       fig-format: svg
       link-external-newwindow: true
     epub:

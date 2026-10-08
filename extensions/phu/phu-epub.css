@@ -1,5 +1,44 @@
-/* EPUB (read in bookokrat): keep it plain, the reader styles the text */
+/* EPUB (read in bookokrat): the reader sets the text; this only keeps the
+   phunotes structure (see latex/phunotes.sty). */
 .phu-svg { display: block; margin: 1em auto; max-width: 100%; }
-.theorem, .proposition, .lemma, .corollary, .definition, .example, .exercise {
-  border-left: 2px solid #9b0014; padding-left: 0.8em; margin: 1em 0;
+.header-section-number { color: #b4442b; margin-right: 0.5em; }
+.theorem-title strong { font-variant: small-caps; font-weight: normal; letter-spacing: 0.05em; }
+
+/* results and definitions: corner marks */
+.theorem { position: relative; padding: 0.4em 0.8em; margin: 1em 0; }
+.theorem::before, .theorem::after {
+  content: ""; position: absolute; width: 10px; height: 10px; border: 0 solid #b4442b;
 }
+.theorem::before { top: 0; left: 0; border-width: 1px 0 0 1px; }
+.theorem::after { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+.theorem.definition::before, .theorem.definition::after { border-color: currentColor; }
+
+/* exercises, examples, solutions: a sheet with a header row */
+.theorem.example, .theorem.exercise, .proof.solution {
+  padding: 0.2em 0; border-top: 1px solid; border-bottom: 1px solid;
+}
+.theorem.example::before, .theorem.example::after,
+.theorem.exercise::before, .theorem.exercise::after { display: none; }
+.theorem.example .theorem-title, .theorem.exercise .theorem-title,
+.proof.solution .proof-title { display: block; border-bottom: 1px solid #c9c0ad; margin-bottom: 0.3em; }
+.proof.remark { font-size: 0.92em; opacity: 0.8; }
+
+/* callouts: plain rule, label above */
+.callout { border-left: 1px solid #c9c0ad; padding-left: 0.8em; margin: 1em 0 1em 1.5em; }
+.callout-warning, .callout-important, .callout-caution { border-left-color: #b4442b; }
+.callout-icon-container { display: none; }
+
+/* code and output */
+div.sourceCode { border-top: 1px solid; border-bottom: 1px solid #c9c0ad; }
+.cell-output-stdout pre { margin-left: 2em; opacity: 0.8; }
+
+/* arrays and tables */
+.phu-array { text-align: center; }
+.phu-array table { display: inline-table; border-left: 1px solid; border-right: 1px solid; }
+.phu-array td, .phu-array th { padding: 0 0.6em; text-align: right; }
+.phu-array thead th, .phu-array td:first-child { opacity: 0.55; font-size: 0.85em; }
+.phu-array .neg { color: #b4442b; }
+.phu-array p, .phu-frame p { font-variant: small-caps; font-size: 0.85em; opacity: 0.7; }
+table { border-collapse: collapse; }
+thead tr { border-top: 1.5px solid; border-bottom: 0.8px solid; }
+tbody tr:last-child { border-bottom: 1.5px solid; }

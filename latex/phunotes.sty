@@ -1,74 +1,182 @@
-% phunotes.sty: the look of notes, books and reports (from the Master
-% notes preamble). Loads phumacros.
+% phunotes.sty: the look of notes, books and reports. Loads phumacros.
 %
 %   Quarto:  format: phu-pdf          (the phu extension loads it)
-%   LaTeX:   \usepackage{phunotes}
+%   LaTeX:   \usepackage{phunotes}    ([cm] keeps Computer Modern)
 %
-% Theorem-like environments get a thin left rule: accent for results,
-% ink for definitions, faint for remarks. Quarto defines the
-% environments itself (::: {#thm-...}); in plain LaTeX this package
-% defines any that are missing at \begin{document}.
+% The look (doc-kit style specimens, 2026-10-08): EB Garamond with Plex
+% Mono for code, Atlas rust accent, white page.
+%   headings   small-caps "chapter 03" eyebrow over a rule; accent numbers
+%   results    (theorem, lemma...) and definitions: drafting corner marks
+%   exercises, examples, solutions: a sheet with a title-block header row
+%   remarks    small and faint; callouts: label hung left of a thin rule
+%   code       no fill, rule above, language tag; output tagged "out"
+% Quarto defines the theorem environments itself (::: {#thm-...}); in
+% plain LaTeX this package defines any that are missing.
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{phunotes}[2026/10/05 notes look]
+\ProvidesPackage{phunotes}[2026/10/08 notes look]
+
+\newif\ifphu@fonts \phu@fontstrue
+\DeclareOption{cm}{\phu@fontsfalse}
+\ProcessOptions\relax
 
 \RequirePackage{phumacros}
 \RequirePackage{amsthm}
-\RequirePackage{microtype}
 \RequirePackage{etoolbox}
 \RequirePackage{enumitem}
 \RequirePackage{fvextra}
 \RequirePackage{tikz}
 \RequirePackage[framemethod=TikZ]{mdframed}
+\RequirePackage{caption}
 \usetikzlibrary{calc,arrows.meta,positioning,shapes.geometric,fit,
                 decorations.pathreplacing,matrix,patterns}
 
+% --- fonts ------------------------------------------------------------
+\RequirePackage{iftex}
+\ifphu@fonts
+  \ifPDFTeX
+    \RequirePackage[lining,semibold]{ebgaramond}
+    \let\Bbbk\relax % amssymb (loaded first by Quarto) vs newtxmath
+    \RequirePackage[cmintegrals,cmbraces]{newtxmath}
+    \RequirePackage{ebgaramond-maths}
+    \RequirePackage[scale=0.85]{plex-mono}
+  \else % LuaLaTeX / XeLaTeX (Quarto's plain pdf format): fontspec
+    \RequirePackage{fontspec}
+    \setmainfont{EBGaramond}[Extension=.otf, UprightFont=*-Regular,
+      ItalicFont=*-Italic, BoldFont=*-SemiBold, BoldItalicFont=*-SemiBoldItalic,
+      Numbers=Lining]
+    \setmonofont{IBMPlexMono}[Extension=.otf, UprightFont=*-Regular,
+      ItalicFont=*-Italic, BoldFont=*-SemiBold, Scale=0.85]
+    \@ifpackageloaded{unicode-math}{\setmathfont{Garamond-Math.otf}[StylisticSet={7,9}]}{}
+  \fi
+\fi
+\RequirePackage{microtype} % after the fonts; \textls for the labels
+
 % --- colours ----------------------------------------------------------
-\definecolor{accent}  {HTML}{9b0014}
-\definecolor{ink}     {HTML}{1a1a1a}
-\definecolor{inkFaint}{HTML}{6b6b6b}
-\definecolor{rule}    {HTML}{c8c8c8}
-\definecolor{codeBg}  {HTML}{f3f3f3}
+\definecolor{accent}  {HTML}{b4442b} % atlas rust
+\definecolor{ink}     {HTML}{1f1d1a}
+\definecolor{inkSoft} {HTML}{4b463e}
+\definecolor{inkFaint}{HTML}{6f6a61}
+\definecolor{rule}    {HTML}{c9c0ad}
+\definecolor{codeBg}  {HTML}{f4f2ee}
 \color{ink}
 
-% --- headings (KOMA classes only: scrbook, scrartcl, scrreprt) --------
+% Small-caps label: "Theorem 3.2" -> letter-spaced small caps.
+\DeclareRobustCommand*{\phulabel}[1]{{\scshape\textls[70]{\MakeLowercase{#1}}}}
+
+\makeatletter
+% --- headings (KOMA classes only: scrbook, scrreprt, scrartcl) --------
+\AtBeginDocument{\let\phu@doctitle\@title}
 \ifdefined\addtokomafont
-  \addtokomafont{disposition}{\normalfont}
+  \setkomafont{disposition}{\normalfont}
   \setkomafont{section}      {\normalfont\Large\bfseries}
   \setkomafont{subsection}   {\normalfont\large\bfseries}
   \setkomafont{subsubsection}{\normalfont\normalsize\bfseries}
   \setkomafont{paragraph}    {\normalfont\normalsize\itshape}
+  \newcommand*\phu@secnum[1]{{\mdseries\small\color{accent}#1}\hspace{.75em}}
+  \renewcommand*\sectionformat      {\phu@secnum{\thesection}}
+  \renewcommand*\subsectionformat   {\phu@secnum{\thesubsection}}
+  \renewcommand*\subsubsectionformat{\phu@secnum{\thesubsubsection}}
+  \ifdefined\chapterformat
+    \setkomafont{chapter}{\normalfont\fontsize{26}{30}\selectfont}
+    \RedeclareSectionCommand[beforeskip=1.5\baselineskip,
+      afterskip=2.2\baselineskip]{chapter}
+    % numbered: "chapter 03 ........ book title" over a rule, then the title
+    \renewcommand*\chapterformat{%
+      \phulabel{\chapapp}~{\color{accent}\ifnum\value{chapter}<10 0\fi\thechapter}}
+    \renewcommand*\chapterlinesformat[3]{%
+      \Ifstr{#1}{chapter}{%
+        \Ifstr{#2}{}{}{%
+          {\normalfont\normalsize\color{inkFaint}%
+           \hbox to\linewidth{#2\hfill\phulabel{\phu@doctitle}}%
+           \vskip3pt{\color{ink}\hrule height .5pt}\vskip .6\baselineskip}}%
+        \raggedright #3}%
+      {\@hangfrom{#2}{#3}}}
+  \fi
 \fi
 
 % --- theorem-like environments ----------------------------------------
-\mdfdefinestyle{phuAccent}{
-  linewidth=1.2pt, linecolor=accent,
-  topline=false, bottomline=false, rightline=false,
-  innertopmargin=2pt, innerbottommargin=4pt,
-  innerleftmargin=12pt, innerrightmargin=0pt,
-  skipabove=8pt, skipbelow=8pt,
+% Quarto creates them with \theoremstyle{plain|definition|remark}; a hook
+% swaps those styles for ours inside each environment, and an mdframed
+% around it draws the frame.
+\newcommand*\phu@headcolor{accent}
+\newcommand*\phu@framecolor{accent}
+\newcommand*\phu@lastexr{}
+\newcommand*\phu@sheetright{}
+
+% results and definitions: label line, upright body
+\newtheoremstyle{phuCorner}{0pt}{0pt}{\upshape}{0pt}{}{}{\newline}
+  {\textcolor{\phu@headcolor}{\phulabel{\thmname{#1}\thmnumber{~#2}}}%
+   \thmnote{\enspace\textcolor{inkFaint}{\textperiodcentered}\enspace
+     \textcolor{inkSoft}{\itshape #3}}}
+% exercises, examples, solutions: header row with a hairline under it
+\newtheoremstyle{phuSheet}{0pt}{0pt}{\upshape}{0pt}{}{}{\newline}
+  {\vbox{\hbox to\linewidth{%
+      \phulabel{\thmname{#1}}\thmnumber{~\textcolor{accent}{\phulabel{#2}}}%
+      \thmnote{\enspace\textcolor{inkFaint}{\textperiodcentered}\enspace
+        \textcolor{inkSoft}{\itshape #3}}%
+      \hfill\phu@sheetright}%
+    \nointerlineskip\kern3pt\hbox{\color{rule}\vrule width\linewidth height .4pt}}}
+% remarks: run-in, small, faint
+\newtheoremstyle{phuQuiet}{4pt}{4pt}{\small\color{inkSoft}}{0pt}{\itshape}{.}{.5em}{}
+
+\newcommand*\phu@style[1]{%
+  \expandafter\let\csname th@plain\expandafter\endcsname\csname th@#1\endcsname
+  \expandafter\let\csname th@definition\expandafter\endcsname\csname th@#1\endcsname
+  \expandafter\let\csname th@remark\expandafter\endcsname\csname th@#1\endcsname}
+
+% corner marks: top left and bottom right of the box
+\newcommand*\phu@corner[3]{%
+  \draw[\phu@framecolor, line width=.5pt]
+    ($#1+(#2*9pt,0)$) -- #1 -- ($#1+(0,#3*9pt)$);}
+\mdfdefinestyle{phuCorners}{
+  hidealllines=true,
+  innertopmargin=5pt, innerbottommargin=2pt,
+  innerleftmargin=10pt, innerrightmargin=10pt,
+  skipabove=10pt, skipbelow=10pt,
+  singleextra={\phu@corner{(O|-P)}{1}{-1}\phu@corner{(P|-O)}{-1}{1}},
+  firstextra={\phu@corner{(O|-P)}{1}{-1}},
+  secondextra={\phu@corner{(P|-O)}{-1}{1}},
 }
-\mdfdefinestyle{phuInk}  {style=phuAccent, linecolor=ink}
-\mdfdefinestyle{phuFaint}{style=phuAccent, linecolor=rule, linewidth=0.9pt}
+\mdfdefinestyle{phuSheet}{
+  linecolor=ink, linewidth=.6pt,
+  leftline=false, rightline=false,
+  innertopmargin=4pt, innerbottommargin=2pt,
+  innerleftmargin=0pt, innerrightmargin=0pt,
+  skipabove=10pt, skipbelow=10pt,
+}
 
-\newcommand{\phuWrap}[2]{% #1 style, #2 environment
-  \BeforeBeginEnvironment{#2}{\begin{mdframed}[style=#1]}%
-  \AfterEndEnvironment{#2}{\end{mdframed}}}
+\newcommand*\phuCornerEnv[2]{% #1 environment, #2 colour (accent | ink)
+  \BeforeBeginEnvironment{#1}{\def\phu@framecolor{#2}\begin{mdframed}[style=phuCorners]}%
+  \AtBeginEnvironment{#1}{\phu@style{phuCorner}\def\phu@headcolor{#2}}%
+  \AfterEndEnvironment{#1}{\end{mdframed}}}
+\newcommand*\phuSheetEnv[2]{% #1 environment, #2 right header cell
+  \BeforeBeginEnvironment{#1}{\begin{mdframed}[style=phuSheet]}%
+  \AtBeginEnvironment{#1}{\phu@style{phuSheet}\def\phu@sheetright{#2}}%
+  \AfterEndEnvironment{#1}{\end{mdframed}}}
+\newcommand*\phuQuietEnv[1]{\AtBeginEnvironment{#1}{\phu@style{phuQuiet}}}
 
-\phuWrap{phuAccent}{theorem}
-\phuWrap{phuAccent}{proposition}
-\phuWrap{phuAccent}{lemma}
-\phuWrap{phuAccent}{corollary}
-\phuWrap{phuAccent}{conjecture}
-\phuWrap{phuInk}{definition}
-\phuWrap{phuInk}{example}
-\phuWrap{phuInk}{exercise}
-\phuWrap{phuFaint}{solution}
-\phuWrap{phuFaint}{remark}
+\newcommand*\phu@where{% "§ 3.2" once inside a section
+  \ifnum\value{section}>0 \textcolor{inkFaint}{\vrule\enspace\S\,\thesection}\fi}
+\newcommand*\phu@forexr{% "ex. 3.4" after an exercise
+  \ifx\phu@lastexr\@empty\else
+    \textcolor{inkFaint}{\vrule\enspace\phulabel{Ex.}~\phu@lastexr}\fi}
 
-\renewcommand{\qedsymbol}{$\square$}
+\phuCornerEnv{theorem}{accent}
+\phuCornerEnv{proposition}{accent}
+\phuCornerEnv{lemma}{accent}
+\phuCornerEnv{corollary}{accent}
+\phuCornerEnv{conjecture}{accent}
+\phuCornerEnv{definition}{ink}
+\phuSheetEnv{exercise}{\phu@where}
+\phuSheetEnv{example}{\phu@where}
+\phuSheetEnv{solution}{\phu@forexr}
+\phuSheetEnv{refsolution}{\phu@forexr}
+\phuQuietEnv{remark}
+\phuQuietEnv{refremark}
+\AfterEndEnvironment{exercise}{\xdef\phu@lastexr{\theexercise}}
+\renewcommand{\qedsymbol}{\textcolor{inkFaint}{$\square$}}
 
 % Plain LaTeX: define what Quarto would have defined.
-\makeatletter
 \AtEndPreamble{%
   \@ifundefined{c@chapter}{\def\phu@within{section}}{\def\phu@within{chapter}}%
   \theoremstyle{plain}%
@@ -85,20 +193,85 @@
   \@ifundefined{remark}{\newtheorem*{remark}{Remark}}{}%
   \@ifundefined{solution}{\newtheorem*{solution}{Solution}}{}%
 }
-\makeatother
+
+% --- callouts (phu.lua turns Quarto callouts into phucallout) ---------
+% \begin{phucallout}{note}{title or empty}: the label hangs left of a
+% thin rule; warning, important and caution take the accent.
+\newcommand*\phu@calloutline{rule}
+\newcommand*\phu@calloutlabel{inkFaint}
+\newcommand*\phu@calloutkind{}
+\newcommand*\phu@calloutlabeltag{%
+  \node[anchor=north east, inner sep=0pt, xshift=-10pt, yshift=-2.5pt,
+        text=\phu@calloutlabel, font=\footnotesize] at (O|-P)
+    {\phulabel{\phu@calloutkind}};}
+\mdfdefinestyle{phuCallout}{
+  topline=false, bottomline=false, rightline=false,
+  linewidth=.6pt, leftmargin=5.2em,
+  innertopmargin=1pt, innerbottommargin=2pt,
+  innerleftmargin=10pt, innerrightmargin=0pt,
+  skipabove=8pt, skipbelow=8pt,
+  singleextra={\phu@calloutlabeltag}, firstextra={\phu@calloutlabeltag},
+}
+\newcommand*\phu@alarm{warning,important,caution}
+\newenvironment{phucallout}[2]{%
+  \def\phu@calloutline{rule}\def\phu@calloutlabel{inkFaint}\def\phu@calloutkind{#1}%
+  \@for\phu@k:=\phu@alarm\do{\Ifstr{\phu@k}{#1}%
+    {\def\phu@calloutline{accent}\def\phu@calloutlabel{accent}}{}}%
+  \begin{mdframed}[style=phuCallout, linecolor=\phu@calloutline]%
+  \Ifstr{#2}{}{}{\textit{#2}\par}}
+  {\end{mdframed}}
 
 % --- code and code output ---------------------------------------------
+% phu.lua puts \phucodelang{python} before each code cell and wraps text
+% output in phuout.
+\newcommand*\phu@lang{}
+\newcommand*\phucodelang[1]{\gdef\phu@lang{#1}}
+\newcommand*\phu@langtag{%
+  \ifx\phu@lang\@empty\else
+    \node[anchor=east, fill=white, inner xsep=4pt, inner ysep=1pt,
+          text=inkFaint, font=\footnotesize] at (P) {\phulabel{\phu@lang}};\fi}
 \mdfdefinestyle{phuCode}{
-  linewidth=1.4pt, linecolor=inkFaint,
-  topline=false, bottomline=false, rightline=false,
-  innertopmargin=2pt, innerbottommargin=4pt,
-  innerleftmargin=10pt, innerrightmargin=0pt,
-  skipabove=2pt, skipbelow=8pt, backgroundcolor=codeBg,
+  hidealllines=true,
+  innertopmargin=7pt, innerbottommargin=5pt,
+  innerleftmargin=0pt, innerrightmargin=0pt,
+  skipabove=8pt, skipbelow=4pt,
+  singleextra={\draw[ink, line width=.5pt] (O|-P) -- (P);
+               \draw[rule, line width=.4pt] (O) -- (P|-O); \phu@langtag},
+  firstextra={\draw[ink, line width=.5pt] (O|-P) -- (P); \phu@langtag},
+  secondextra={\draw[rule, line width=.4pt] (O) -- (P|-O);},
 }
-\newenvironment{codeoutput}
-  {\begin{mdframed}[style=phuCode]\footnotesize\ttfamily}
-  {\end{mdframed}}
-\fvset{breaklines=true, breakanywhere=true, breakautoindent=true}
+\AtEndPreamble{%
+  \ifdefined\Shaded
+    \renewenvironment{Shaded}
+      {\begin{mdframed}[style=phuCode]}
+      {\end{mdframed}\gdef\phu@lang{}}%
+  \fi}
+\newenvironment{phuout}
+  {\begin{list}{}{\leftmargin=2.8em \labelwidth=2.2em \labelsep=.6em
+                  \topsep=2pt \partopsep=0pt \itemsep=0pt}%
+   \item[\textcolor{accent}{\footnotesize\phulabel{out}}]}
+  {\end{list}}
+\fvset{fontsize=\small, breaklines=true, breakanywhere=true, breakautoindent=true}
+\newenvironment{codeoutput}{\begin{phuout}\small\ttfamily}{\end{phuout}}
+
+% --- arrays from code (phu.lua, fed by the phu display helpers) -------
+% (pdflatex) characters the helpers print
+\ifdefined\DeclareUnicodeCharacter
+  \DeclareUnicodeCharacter{2212}{\ensuremath{-}}
+  \DeclareUnicodeCharacter{22EE}{\ensuremath{\vdots}}
+  \DeclareUnicodeCharacter{22EF}{\ensuremath{\cdots}}
+  \DeclareUnicodeCharacter{22F1}{\ensuremath{\ddots}}
+\fi
+\newcommand*\phuix[1]{\text{\color{inkFaint}\scriptsize\ttfamily #1}}
+\newcommand*\phuneg[1]{\textcolor{accent}{#1}}
+
+% --- captions ---------------------------------------------------------
+\DeclareCaptionLabelFormat{phu}{\textcolor{accent}{\phulabel{#1~#2}}}
+\DeclareCaptionFormat{phuFig}{{\color{ink}\hrule height .5pt}\vskip4pt#1#2#3}
+\captionsetup{labelformat=phu, labelsep=quad, font=small,
+  justification=raggedright, singlelinecheck=false}
+\captionsetup[figure]{format=phuFig, name=Fig.}
+\makeatother
 
 % --- spacing ----------------------------------------------------------
 \setlist{itemsep=2pt, topsep=4pt, parsep=0pt}

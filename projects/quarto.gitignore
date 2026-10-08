@@ -10,3 +10,6 @@
 *.fls
 *.synctex.gz
 *.spl
+_chapter/
+.jupyter_cache/
+*_cache/

@@ -1,0 +1,15 @@
+# Chapter preview: `quarto render chapters/x.qmd --profile chapter` renders
+# one chapter on its own into _chapter/ (nvim: <leader>vp / <leader>vh in a
+# chapter; <leader>vP / <leader>vH render the whole book). References to
+# other chapters show as ?@sec-...; the full book resolves them.
+title: "{{TITLE}}"
+phu-chapter-preview: true
+project:
+  type: default
+  output-dir: _chapter
+format:
+  phu-pdf:
+    documentclass: scrreprt
+    toc: false
+  phu-epub:
+    toc: false

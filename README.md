@@ -21,6 +21,8 @@ newdoc link   [DIR]  # point an existing Quarto folder at the kit
 | `extensions/phu` | Quarto extension: `phu-pdf` / `phu-html` / `phu-epub` formats and the `phu` filter (the notes look, shared macros) |
 | `extensions/quarto-journals/elsevier` | [quarto-journals/elsevier](https://github.com/quarto-journals/elsevier) 0.4.5, vendored unchanged (MIT, its own `LICENSE`) |
 | `latex/` | `phumacros.sty` (math macros), `phunotes.sty` (macros + the notes look), `phu-macros.tex` |
+| `python/` | `phu.py`: numpy arrays and pandas frames in the look, plot helpers; `phu.mplstyle` |
+| `r/phu.R` | The same for knitr (matrices, long vectors, data frames) and `theme_phu()` for ggplot2 |
 | `snippets/` | VS Code-format snippets (Quarto, LaTeX, math, Python, R, Julia, Rust, shell), usable from LuaSnip/blink/friendly-snippets |
 
 A new Quarto project has no copied extensions and no `.cls` files:
@@ -30,6 +32,10 @@ mybook/
   _quarto.yml  index.qmd  chapters/  references.bib  .gitignore
   _extensions -> ~/code/doc-kit/extensions        (one symlink)
 ```
+
+A book also gets `_quarto-chapter.yml`: `quarto render chapters/x.qmd --profile
+chapter` renders one chapter on its own (into `_chapter/`, keeping its number
+with `-M phu-chapter-offset:N -M number-offset:[N]`).
 
 Quarto doesn't follow links *inside* `_extensions`, so the whole folder is
 linked. LaTeX documents use `\usepackage{phunotes}`, found through
@@ -47,13 +53,26 @@ git clone https://github.com/PhyAMR/doc-kit ~/code/doc-kit
 ```
 
 This links `newdoc` into `~/.local/bin` and `latex/` into
-`$TEXMFHOME/tex/latex/phu`, and writes `~/.config/doc-kit/author.conf` from
+`$TEXMFHOME/tex/latex/phu`, links EB Garamond and IBM Plex Mono from TeX Live
+into `~/.local/share/fonts/doc-kit` (for matplotlib), hooks the display
+helpers into IPython (`~/.ipython/profile_default/startup/50-doc-kit.py`) and
+R (`~/.Rprofile`), active only inside Quarto renders, and writes `~/.config/doc-kit/author.conf` from
 [author.conf.example](author.conf.example). Fill that in: its values replace
 `{{AUTHOR}}`, `{{EMAIL}}`, `{{AFFILIATION}}`, … in new documents.
 
 The `hdr*` header snippets in `snippets/quarto.json` (for standalone `.qmd`
 files with no `_extensions` link) name the `phu` filter by absolute path; change
 `/home/phuniverse/code/doc-kit` there if your checkout lives elsewhere.
+
+## The look
+
+EB Garamond and IBM Plex Mono, one rust accent (`#b4442b`), white page. Results
+get drafting corner marks, exercises/examples/solutions a title-block header
+row, callouts a label hung in the margin, code a rule and a language tag with
+monochrome highlighting (`extensions/phu/phu.theme`). Matrices and data frames
+printed by Python or R cells become bracketed grids and booktabs tables,
+truncated when big. `PHU_DISPLAY=0` turns the output helpers off;
+`\usepackage[cm]{phunotes}` keeps Computer Modern.
 
 ## License
 
