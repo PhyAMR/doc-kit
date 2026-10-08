@@ -1,186 +1,56 @@
-"""phu: code output in Quarto documents, in the phunotes look.
+"""phu: plots in the phunotes look, for Quarto books and reports.
 
-Loaded automatically in every Quarto Jupyter kernel by the IPython startup
-file that install.sh writes (it checks QUARTO_DOCUMENT_PATH; PHU_DISPLAY=0
-turns it off). It
+Code stays ordinary: plt.plot(...), df.plot(), seaborn. In a Quarto kernel
+whose document uses the look (a phu-* format or `phu-look: true`), the
+IPython startup file that install.sh writes calls setup(), which points
+matplotlib at phu.mplstyle through MATPLOTLIBRC before anything imports
+it. Printed and displayed output is untouched here: the phu filter
+(extensions/phu/phu-output.lua) typesets it. PHU_DISPLAY=0 turns it off.
 
-- shows numpy arrays (1-D and 2-D) as a ::: {.phu-array} grid that the phu
-  filter turns into a bracketed array in the PDF and a styled table in HTML;
-  long vectors and big matrices keep only their head and tail;
-- shows pandas DataFrames and Series as a booktabs table, truncated the
-  same way, with a "1000 rows × 5 columns" line;
-- points matplotlib at phu.mplstyle (MATPLOTLIBRC), and gives three
-  drawing helpers for the plate look: centerline, dimension, mark.
-
-Outside Quarto: `import phu; phu.setup()` in IPython, or
-`plt.style.use(phu.STYLE)` for the plots alone.
+The plate details are opt-in helpers: centerline, dimension, mark.
+Outside Quarto: plt.style.use(phu.STYLE).
 """
-import math
 import os
+import re
 
 STYLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "phu.mplstyle")
-
-MAX_VECTOR = 12  # longer vectors show HEAD … TAIL
-MAX_ROWS = 10
-MAX_COLS = 8
-HEAD, TAIL = 5, 3
-FRAME_ROWS, FRAME_HEAD, FRAME_TAIL = 14, 6, 4
-FRAME_COLS = 8
-MAX_TEXT = 40
-
-VDOTS, CDOTS, DDOTS, MINUS = "⋮", "⋯", "⋱", "−"
-
 INK, ACCENT, FAINT, RULE = "#1f1d1a", "#b4442b", "#8a8374", "#c9c0ad"
 
-
-# --- number formatting --------------------------------------------------
-def _decimals(x, cap=4):
-    s = f"{abs(x):.{cap}f}".rstrip("0")
-    return len(s.split(".")[1]) if "." in s else 0
+LOOK = re.compile(r"phu-look:\s*true|\bphu-(pdf|html|epub)(?![.\w-])")
 
 
-def format_numbers(values):
-    """One format for a whole array or column, so the digits line up."""
-    vals = list(values)
-    if not vals:
-        return []
-    if all(isinstance(v, bool) for v in vals):
-        return [str(v) for v in vals]
-    if all(isinstance(v, int) for v in vals):
-        return [str(v).replace("-", MINUS) for v in vals]
-    if any(isinstance(v, complex) for v in vals):
-        return [f"{complex(v):.3g}".strip("()").replace("-", MINUS) for v in vals]
-    finite = [abs(float(v)) for v in vals if math.isfinite(float(v)) and v != 0]
-    big, small = (max(finite), min(finite)) if finite else (0.0, 0.0)
-    if big >= 1e5 or (0 < small < 1e-3 and big < 1):
-        fmt = "{:.3e}"
-    else:
-        d = max([_decimals(float(v)) for v in vals if math.isfinite(float(v))] or [1])
-        fmt = "{:.%df}" % min(max(d, 1), 4)
-    out = []
-    for v in vals:
-        v = float(v)
-        out.append(str(v) if not math.isfinite(v) else fmt.format(v).replace("-", MINUS))
-    return out
+def _read(path, limit=200_000):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            return fh.read(limit)
+    except OSError:
+        return ""
 
 
-def _escape(text):
-    text = str(text)
-    if len(text) > MAX_TEXT:
-        text = text[: MAX_TEXT - 1] + "…"
-    for ch in "\\|*_`[]<>$#":
-        text = text.replace(ch, "\\" + ch)
-    return text.replace("\n", " ")
+def wants_look(doc_dir=None, doc_file=None):
+    """Does the document Quarto is rendering use the look?
 
-
-def _pick(n, limit, head, tail):
-    """Indices to show, with None where the gap goes."""
-    if n <= limit:
-        return list(range(n))
-    return list(range(head)) + [None] + list(range(n - tail, n))
-
-
-def _pipe_table(header, rows, align):
-    lines = ["| " + " | ".join(header) + " |",
-             "|" + "|".join("--:" if a == "r" else ":--" for a in align) + "|"]
-    lines += ["| " + " | ".join(r) + " |" for r in rows]
-    return "\n".join(lines)
-
-
-# --- numpy ----------------------------------------------------------------
-def array_markdown(a):
-    import numpy as np
-
-    a = np.asarray(a)
-    if a.ndim not in (1, 2) or a.size == 0 or a.dtype.kind not in "biufc":
-        return None
-    m = a.reshape(1, -1) if a.ndim == 1 else a
-    rows = [None] if a.ndim == 1 else _pick(m.shape[0], MAX_ROWS, HEAD, TAIL)
-    cols = _pick(m.shape[1], MAX_VECTOR if a.ndim == 1 else MAX_COLS, HEAD, TAIL)
-    real_rows = [0] if a.ndim == 1 else [r for r in rows if r is not None]
-    real_cols = [c for c in cols if c is not None]
-    shown = m[np.ix_(real_rows, real_cols)]
-    text = iter(format_numbers(shown.ravel().tolist()))
-
-    header = [""] + [CDOTS if c is None else str(c) for c in cols]
-    body = []
-    for r in rows if a.ndim == 2 else ["vector"]:
-        if r is None:
-            body.append([VDOTS] + [DDOTS if c is None else VDOTS for c in cols])
-            continue
-        cells = [next(text) if c is not None else CDOTS for c in cols]
-        body.append(["" if a.ndim == 1 else str(r)] + cells)
-    shape = " × ".join(str(s) for s in a.shape)
-    table = _pipe_table(header, body, ["r"] * len(header))
-    return f"::: {{.phu-array}}\n{table}\n\n{a.dtype} · {shape}\n:::\n"
-
-
-# --- pandas ---------------------------------------------------------------
-def _column_text(col):
-    import pandas as pd
-
-    if pd.api.types.is_bool_dtype(col):
-        return [str(v) for v in col], "l"
-    if pd.api.types.is_numeric_dtype(col):
-        vals = col.tolist()
-        present = [v for v in vals if not pd.isna(v)]
-        text = iter(format_numbers(present))
-        return [("NA" if pd.isna(v) else next(text)) for v in vals], "r"
-    return [_escape(v) for v in col], "l"
-
-
-def frame_markdown(df):
-    import pandas as pd
-
-    if isinstance(df, pd.Series):
-        df = df.to_frame(name=df.name if df.name is not None else "")
-    n, m = df.shape
-    rows = _pick(n, FRAME_ROWS, FRAME_HEAD, FRAME_TAIL)
-    cols = _pick(m, FRAME_COLS, HEAD, TAIL)
-    real_rows = [r for r in rows if r is not None]
-    real_cols = [c for c in cols if c is not None]
-    part = df.iloc[real_rows, real_cols]
-
-    texts, align = [], ["l"]
-    for j in range(part.shape[1]):
-        t, al = _column_text(part.iloc[:, j])
-        texts.append(t)
-        align.append(al)
-    names = [" · ".join(map(str, c)) if isinstance(c, tuple) else str(c)
-             for c in part.columns]
-    index_name = " · ".join(str(x) for x in df.index.names if x is not None)
-
-    header, k = [_escape(index_name)], 0
-    for c in cols:
-        if c is None:
-            header.append(CDOTS)
-        else:
-            header.append(_escape(names[k]))
-            k += 1
-    body, i = [], 0
-    for r in rows:
-        if r is None:
-            body.append([VDOTS] * len(header))
-            continue
-        label = part.index[i]
-        label = " · ".join(map(str, label)) if isinstance(label, tuple) else label
-        row, k = [_escape(label)], 0
-        for c in cols:
-            if c is None:
-                row.append(CDOTS)
-            else:
-                row.append(texts[k][i])
-                k += 1
-        body.append(row)
-        i += 1
-    full_align = [align[0]]
-    k = 1
-    for c in cols:
-        full_align.append("r" if c is None else align[k])
-        k += c is not None
-    table = _pipe_table(header, body, full_align)
-    return (f"::: {{.phu-frame}}\n{table}\n\n"
-            f"{n} rows × {m} columns\n:::\n")
+    Looks at the document itself, then the project's _quarto*.yml and the
+    files its metadata-files list.
+    """
+    doc_dir = doc_dir or os.environ.get("QUARTO_DOCUMENT_PATH", "")
+    doc_file = doc_file or os.environ.get("QUARTO_DOCUMENT_FILE", "")
+    if not doc_dir:
+        return False
+    texts = [_read(os.path.join(doc_dir, doc_file))] if doc_file else []
+    d = os.path.abspath(doc_dir)
+    while True:
+        ymls = sorted(f for f in os.listdir(d) if re.fullmatch(r"_quarto(-[\w-]+)?\.ya?ml", f))
+        for y in ymls:
+            text = _read(os.path.join(d, y))
+            texts.append(text)
+            for ref in re.findall(r"^\s*-\s*(\S+\.ya?ml)\s*$", text, re.M):
+                texts.append(_read(os.path.normpath(os.path.join(d, ref))))
+        parent = os.path.dirname(d)
+        if ymls or parent == d:
+            break
+        d = parent
+    return any(LOOK.search(t) for t in texts)
 
 
 # --- matplotlib helpers (the plate look) -----------------------------------
@@ -213,26 +83,45 @@ def dimension(ax, x0, x1, y, text, ext_from=None, **kw):
 
 
 # --- setup ------------------------------------------------------------------
-def setup(ip=None):
-    """Register the display formatters (numpy, pandas) and the plot style."""
+# seaborn fills boxes and bars with its first colour: a warm grey keeps
+# medians and edges readable; lines follow with rust and ink
+SEABORN_PALETTE = ["#9a9384", ACCENT, "#4b463e", RULE, INK]
+
+
+def _after_import(name, fn):
+    """Run fn(module) once `name` is imported (now, if it already is)."""
+    import importlib.abc
+    import importlib.util
+    import sys
+
+    if name in sys.modules:
+        fn(sys.modules[name])
+        return
+
+    class Hook(importlib.abc.MetaPathFinder):
+        def find_spec(self, fullname, path, target=None):
+            if fullname != name:
+                return None
+            sys.meta_path.remove(self)
+            spec = importlib.util.find_spec(fullname)
+            if spec is None or spec.loader is None:
+                return spec
+            run = spec.loader.exec_module
+
+            def exec_module(module):
+                run(module)
+                try:
+                    fn(module)
+                except Exception:  # looks must never break an import
+                    pass
+
+            spec.loader.exec_module = exec_module
+            return spec
+
+    sys.meta_path.insert(0, Hook())
+
+
+def setup():
+    """Plot style for this kernel (before matplotlib is imported)."""
     os.environ.setdefault("MATPLOTLIBRC", STYLE)
-    if ip is None:
-        try:
-            ip = get_ipython()  # noqa: F821
-        except NameError:
-            return
-    md = ip.display_formatter.formatters["text/markdown"]
-    html = ip.display_formatter.formatters["text/html"]
-    latex = ip.display_formatter.formatters["text/latex"]
-    md.for_type_by_name("numpy", "ndarray", array_markdown)
-    # pandas 3 names its classes pandas.DataFrame, older ones pandas.core.frame.DataFrame
-    for module, kind in (("pandas", "DataFrame"), ("pandas", "Series"),
-                         ("pandas.core.frame", "DataFrame"), ("pandas.core.series", "Series")):
-        md.for_type_by_name(module, kind, frame_markdown)
-        # pandas' own HTML/LaTeX would win over markdown: switch them off
-        html.for_type_by_name(module, kind, _nothing)
-        latex.for_type_by_name(module, kind, _nothing)
-
-
-def _nothing(_):
-    return None
+    _after_import("seaborn", lambda sns: sns.set_palette(SEABORN_PALETTE))

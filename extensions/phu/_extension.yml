@@ -9,6 +9,7 @@ contributes:
     - phu.lua
   formats:
     common:
+      phu-look: true
       filters:
         - phu.lua
       number-sections: true

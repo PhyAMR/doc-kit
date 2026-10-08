@@ -115,14 +115,20 @@ div.sourceCode::before {
   position: absolute; top: -0.75em; right: 0; background: $body-bg; padding-left: 0.4em;
   @include phu-label; font-size: 0.8rem; color: $phu-ink-faint;
 }
-.cell-output-stdout, .cell-output-display:has(> pre) {
-  position: relative; padding-left: 2.8em;
-  &::before {
-    content: "out"; position: absolute; left: 0; top: 0.15em;
-    @include phu-label; font-size: 0.8rem; color: $phu-accent;
+/* console text (what phu-output.lua leaves as text) is tagged "out" */
+.cell-output-stdout, .cell-output-display, .cell-output-stderr {
+  > pre {
+    position: relative; margin-left: 2.8em; background: transparent; border: 0;
+    padding: 0; color: $phu-ink-soft; font-size: 0.8em; overflow: visible;
+    &::before {
+      content: "out"; position: absolute; left: -3.4em; top: 0;
+      @include phu-label; font-size: 0.95rem; color: $phu-accent;
+      font-family: $font-family-serif;
+    }
   }
-  pre { background: transparent; border: 0; padding: 0; color: $phu-ink-soft; font-size: 0.8em; }
 }
+.cell-output-stderr > pre::before { content: "msg"; color: $phu-ink-faint; }
+.phu-frame .ix, .phu-array .ix { color: $phu-ink-faint; }
 
 /* --- arrays and data frames from code (phu display helpers) --------- */
 .phu-array { text-align: center; margin: 1em 0; }
@@ -142,14 +148,14 @@ div.sourceCode::before {
     border: 0 !important; padding: 1px 0.6em !important;
     background: transparent !important; box-shadow: none !important;
   }
-  thead th, td:first-child { color: #a29b8d; font-size: 0.85em; font-weight: 400; }
+  thead th, .ix { color: #a29b8d; font-size: 0.85em; font-weight: 400; }
   .neg { color: $phu-accent; }
 }
 .phu-array p, .phu-frame p { @include phu-label; font-size: 0.8em; color: $phu-ink-faint; margin: 0; }
 .phu-frame { margin: 1em 0; overflow-x: auto; }
 .phu-frame table { width: auto; margin: 0 auto 0.2em; font-size: 0.9em; }
 .phu-frame p { text-align: center; }
-.phu-frame td:first-child, .phu-frame th:first-child { color: $phu-ink-faint; }
+.phu-frame table td, .phu-frame table th { padding: 0.12em 0.6em; }
 
 /* --- tables: booktabs ----------------------------------------------- */
 table.table {

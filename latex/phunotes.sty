@@ -37,7 +37,15 @@
     \RequirePackage[lining,semibold]{ebgaramond}
     \let\Bbbk\relax % amssymb (loaded first by Quarto) vs newtxmath
     \RequirePackage[cmintegrals,cmbraces]{newtxmath}
+    % ebgaramond-maths turns these into errors (no glyph in EB Garamond);
+    % keep the definitions they had (newtxmath's, or the macros' \vec)
+    \def\phu@keep{leftharpoonup,leftharpoondown,rightharpoonup,rightharpoondown,%
+      triangleright,triangleleft,star,partial,flat,natural,sharp,smile,frown,vec,t}
+    \@for\phu@s:=\phu@keep\do{\expandafter\let\csname phu@k@\phu@s\expandafter\endcsname
+      \csname\phu@s\endcsname}
     \RequirePackage{ebgaramond-maths}
+    \@for\phu@s:=\phu@keep\do{\expandafter\let\csname\phu@s\expandafter\endcsname
+      \csname phu@k@\phu@s\endcsname}
     \RequirePackage[scale=0.85]{plex-mono}
   \else % LuaLaTeX / XeLaTeX (Quarto's plain pdf format): fontspec
     \RequirePackage{fontspec}
@@ -215,10 +223,10 @@
 \newcommand*\phu@alarm{warning,important,caution}
 \newenvironment{phucallout}[2]{%
   \def\phu@calloutline{rule}\def\phu@calloutlabel{inkFaint}\def\phu@calloutkind{#1}%
-  \@for\phu@k:=\phu@alarm\do{\Ifstr{\phu@k}{#1}%
+  \@for\phu@k:=\phu@alarm\do{\expandafter\ifstrequal\expandafter{\phu@k}{#1}%
     {\def\phu@calloutline{accent}\def\phu@calloutlabel{accent}}{}}%
   \begin{mdframed}[style=phuCallout, linecolor=\phu@calloutline]%
-  \Ifstr{#2}{}{}{\textit{#2}\par}}
+  \ifstrempty{#2}{}{\textit{#2}\par}}
   {\end{mdframed}}
 
 % --- code and code output ---------------------------------------------
@@ -246,10 +254,11 @@
       {\begin{mdframed}[style=phuCode]}
       {\end{mdframed}\gdef\phu@lang{}}%
   \fi}
-\newenvironment{phuout}
+\newenvironment{phuout}[1][out]
   {\begin{list}{}{\leftmargin=2.8em \labelwidth=2.2em \labelsep=.6em
                   \topsep=2pt \partopsep=0pt \itemsep=0pt}%
-   \item[\textcolor{accent}{\footnotesize\phulabel{out}}]}
+   \ifstrequal{#1}{out}{\def\phu@outcolor{accent}}{\def\phu@outcolor{inkFaint}}%
+   \item[\textcolor{\phu@outcolor}{\footnotesize\phulabel{#1}}]}
   {\end{list}}
 \fvset{fontsize=\small, breaklines=true, breakanywhere=true, breakautoindent=true}
 \newenvironment{codeoutput}{\begin{phuout}\small\ttfamily}{\end{phuout}}
@@ -264,6 +273,32 @@
 \fi
 \newcommand*\phuix[1]{\text{\color{inkFaint}\scriptsize\ttfamily #1}}
 \newcommand*\phuneg[1]{\textcolor{accent}{#1}}
+
+% --- two-column documents ---------------------------------------------
+% longtable (every pandoc table) refuses two-column mode. There, a
+% longtable becomes a column-wide table float: caption kept, the repeated
+% page head dropped, shrunk to the column when too wide.
+\newsavebox\phu@tbox
+\long\def\phu@ltcap\caption#1\tabularnewline{\gdef\phu@cap{\caption#1}\phu@ltstart}
+\newcommand*\phu@ltspec{}
+\newcommand*\phu@begtab[1]{\begin{tabular}{#1}}
+\newcommand*\phu@ltstart{\begin{lrbox}{\phu@tbox}\expandafter\phu@begtab\expandafter{\phu@ltspec}}
+\AtBeginDocument{%
+  \if@twocolumn
+    \renewenvironment{longtable}[2][]{%
+      \def\phu@ltspec{#2}\gdef\phu@cap{}%
+      \long\def\endfirsthead##1\endlastfoot{}%
+      \long\def\endhead##1\endlastfoot{}%
+      \small\@ifnextchar\caption{\phu@ltcap}{\phu@ltstart}}
+      {\bottomrule\end{tabular}\end{lrbox}%
+       \def\phu@fit{\ifdim\wd\phu@tbox>\linewidth
+         \resizebox{\linewidth}{!}{\usebox\phu@tbox}\else\usebox\phu@tbox\fi}%
+       \ifx\phu@cap\@empty % code output and plain tables stay in place
+         \par\begin{center}\phu@fit\end{center}%
+       \else
+         \begin{table}[tbp]\centering\phu@cap\par\phu@fit\end{table}%
+       \fi}%
+  \fi}
 
 % --- captions ---------------------------------------------------------
 \DeclareCaptionLabelFormat{phu}{\textcolor{accent}{\phulabel{#1~#2}}}

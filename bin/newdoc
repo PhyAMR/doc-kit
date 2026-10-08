@@ -9,6 +9,7 @@ every document. Author details: ~/.config/doc-kit/author.conf.
 
   newdoc book   ~/Master/4sem/Thesis/notes -t "Thesis notes"
   newdoc report reports/lab1             -t "Lab 1"
+  newdoc report reports/lab1 -2          -t "Lab 1"   # two columns
   newdoc paper  ~/Work/CMB/v2   -t "Large-angle statistics"
   newdoc tex    draft                    -t "Draft"
   newdoc link   [DIR]          # point an existing Quarto folder's _extensions at the kit
@@ -66,11 +67,11 @@ def link_extensions(dest: Path) -> None:
     print(f"  linked _extensions -> {EXTENSIONS}")
 
 
-def cmd_new(kind: str, dest: Path, title: str | None) -> None:
+def cmd_new(kind: str, dest: Path, title: str | None, columns: int = 1) -> None:
     if dest.exists() and any(dest.iterdir()):
         die(f"{dest} is not empty (use `newdoc link {dest}` for an existing project)")
     title = title or dest.name.replace("-", " ").replace("_", " ").capitalize()
-    subs = {"TITLE": title, **author_vars()}
+    subs = {"TITLE": title, "COLUMNS": "twocolumn" if columns == 2 else "onecolumn", **author_vars()}
     stem = slugify(dest.name)
 
     src = PROJECTS / kind
@@ -109,12 +110,14 @@ def main() -> None:
     p.add_argument("kind", choices=[*KINDS, "link"])
     p.add_argument("dir", nargs="?", default=".")
     p.add_argument("-t", "--title")
+    p.add_argument("-2", "--two-column", action="store_true",
+                   help="report in two columns (wide figures: #| fig-env: figure*)")
     args = p.parse_args()
     dest = Path(args.dir).expanduser().resolve()
     if args.kind == "link":
         cmd_link(dest)
     else:
-        cmd_new(args.kind, dest, args.title)
+        cmd_new(args.kind, dest, args.title, 2 if args.two_column else 1)
 
 
 if __name__ == "__main__":

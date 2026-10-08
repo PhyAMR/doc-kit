@@ -1,6 +1,6 @@
 # doc-kit: linked by install.sh as ~/.ipython/profile_default/startup/50-doc-kit.py.
-# In a kernel started by Quarto (QUARTO_DOCUMENT_PATH is set) load phu.py:
-# phunotes-style arrays, data frames and plots. PHU_DISPLAY=0 turns it off.
+# In a kernel started by Quarto for a book or report (phu-* formats), set
+# the plot style (phu.py). Output is left alone. PHU_DISPLAY=0 turns it off.
 def _doc_kit_setup():
     import os
     import sys
@@ -12,7 +12,8 @@ def _doc_kit_setup():
         sys.path.append(here)
     import phu
 
-    phu.setup()
+    if phu.wants_look():
+        phu.setup()
 
 
 try:

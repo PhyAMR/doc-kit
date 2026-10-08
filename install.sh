@@ -31,7 +31,7 @@ fc-cache -f "$FONTS" >/dev/null 2>&1 || true
 rm -f "${XDG_CACHE_HOME:-$HOME/.cache}"/matplotlib/fontlist-*.json
 echo "fonts -> $FONTS"
 
-# Code output in the look, only inside Quarto renders (QUARTO_DOCUMENT_PATH):
+# Plot style in the look, only when Quarto renders a book or report:
 # an IPython startup file for Python kernels, a line in ~/.Rprofile for R.
 STARTUP="$HOME/.ipython/profile_default/startup"
 mkdir -p "$STARTUP"
@@ -40,4 +40,4 @@ RLINE="if (nzchar(Sys.getenv(\"QUARTO_DOCUMENT_PATH\")) && Sys.getenv(\"PHU_DISP
 if ! grep -qF "$REPO/r/phu.R" "$HOME/.Rprofile" 2>/dev/null; then
   printf '\n# doc-kit: phunotes-style output when Quarto renders\n%s\n' "$RLINE" >> "$HOME/.Rprofile"
 fi
-echo "display helpers -> $STARTUP/50-doc-kit.py, ~/.Rprofile"
+echo "plot style hooks -> $STARTUP/50-doc-kit.py, ~/.Rprofile"

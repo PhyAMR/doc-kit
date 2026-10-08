@@ -6,6 +6,7 @@ bibliography: references.bib
 format:
   phu-pdf:
     documentclass: scrartcl
+    classoption: [{{COLUMNS}}]   # onecolumn | twocolumn (newdoc report -2)
   phu-html: default
 ---
 
