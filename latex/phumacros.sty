@@ -8,7 +8,9 @@
 \ProvidesPackage{phumacros}[2026/10/05 shared math macros]
 
 \RequirePackage{amsmath,amssymb,mathtools}
-\RequirePackage{bm}
+% bm builds bold math from the legacy fonts; with unicode-math (LuaLaTeX,
+% XeLaTeX) \boldsymbol uses the math font's bold version instead
+\@ifpackageloaded{unicode-math}{\providecommand{\bm}[1]{\boldsymbol{#1}}}{\RequirePackage{bm}}
 \RequirePackage{braket}   % \ket \bra \braket
 \RequirePackage{xcolor}
 

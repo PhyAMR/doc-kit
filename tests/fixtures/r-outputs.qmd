@@ -1,0 +1,158 @@
+---
+title: "R output"
+---
+
+The R counterpart of `py-outputs.qmd`. Auto-printed objects are rendered
+according to their type; `print()` and `cat()` stay console text.
+
+## Data frames
+
+```{r}
+mtcars[1:6, 1:6]
+```
+
+```{r}
+print(mtcars[1:6, 1:6])
+```
+
+```{r}
+iris
+```
+
+```{r}
+library(tibble)
+tib <- tibble(
+  name = c("Ada", "Grace", "Katherine", NA),
+  born = c(1815L, 1906L, 1918L, NA),
+  score = c(9.5, -1.25, 7, NA),
+  when = as.Date(c("2026-01-01", "2026-02-15", NA, "2026-04-30"))
+)
+tib
+```
+
+```{r}
+nycflights13::flights
+```
+
+```{r}
+wide <- as.data.frame(matrix(1:60, nrow = 3, dimnames = list(NULL, paste0("v", 1:20))))
+wide
+```
+
+```{r}
+tibble(id = 1:2, items = list(1:3, letters[1:2]))
+```
+
+```{r}
+data.table::as.data.table(head(airquality))
+```
+
+Grouped summaries, the most common dplyr output:
+
+```{r}
+#| message: false
+library(dplyr)
+mtcars |>
+  group_by(cyl) |>
+  summarise(n = n(), mpg = mean(mpg), hp = max(hp))
+```
+
+## Matrices
+
+```{r}
+matrix(1:6, nrow = 2)
+```
+
+```{r}
+set.seed(1)
+round(matrix(rnorm(16), 4), 3)
+```
+
+```{r}
+matrix(1:400, 20)
+```
+
+```{r}
+cor(mtcars[, 1:4])
+```
+
+Non-numeric matrices and `print()` stay console text:
+
+```{r}
+matrix(letters[1:6], 2)
+```
+
+```{r}
+print(matrix(1:4, 2))
+```
+
+## Vectors, factors, tables, models
+
+```{r}
+1:30
+```
+
+```{r}
+c(a = 1.5, b = -2, c = NA)
+```
+
+```{r}
+factor(c("lo", "hi", "lo", "mid"), levels = c("lo", "mid", "hi"))
+```
+
+```{r}
+table(mtcars$cyl, mtcars$gear)
+```
+
+```{r}
+summary(lm(mpg ~ wt + hp, data = mtcars))
+```
+
+```{r}
+str(iris)
+```
+
+```{r}
+list(a = 1, b = "two", c = list(d = 3))
+```
+
+## Loops
+
+```{r}
+for (i in 1:5) cat(sprintf("iter %d  value=%.3f\n", i, 1 / i))
+```
+
+## Messages, warnings, errors
+
+```{r}
+message("a message")
+warning("a warning")
+1 + 1
+```
+
+```{r}
+stop("an error")
+```
+
+## r4ds style: collapsed output with `#>`
+
+```{r}
+#| collapse: true
+#| comment: "#>"
+x <- c(1, 4, 9)
+sqrt(x)
+head(mtcars, 3)
+```
+
+## Plots
+
+```{r}
+plot(mtcars$wt, mtcars$mpg, xlab = "weight", ylab = "mpg")
+```
+
+```{r}
+library(ggplot2)
+ggplot(mtcars, aes(wt, mpg, colour = factor(cyl))) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE)
+```

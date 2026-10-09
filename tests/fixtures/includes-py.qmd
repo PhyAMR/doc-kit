@@ -1,0 +1,67 @@
+---
+title: "Code from files: Python"
+jupyter: python3
+---
+
+Ways to bring code that lives in `.py` files into a document. Each section
+says what it shows and what it runs.
+
+## Include shortcode inside a code cell
+
+The file's text becomes the cell's code before anything runs: it is shown
+and executed like code typed in the cell.
+
+```{python}
+{{< include _code/helpers.py >}}
+```
+
+```{python}
+moving_average([1, 2, 3, 4, 5])
+```
+
+## Import it as a module
+
+The usual way in projects: only the import is shown.
+
+```{python}
+import sys
+sys.path.insert(0, "_code")
+from helpers import GREETING, moving_average
+GREETING
+```
+
+## Run a script
+
+`%run` (IPython) runs the whole file; its variables stay defined.
+
+```{python}
+%run _code/script.py
+result
+```
+
+```{python}
+exec(open("_code/script.py").read())
+```
+
+## Show a file without running it
+
+```{python}
+#| eval: false
+{{< include _code/script.py >}}
+```
+
+## `file:` cell option
+
+knitr reads the cell's code from `file:`; this checks what Jupyter does with it.
+
+```{python}
+#| file: _code/script.py
+```
+
+## Embed cells from a notebook
+
+The table and the figure come from `_code/analysis.ipynb`.
+
+{{< embed _code/analysis.ipynb#tbl-summary >}}
+
+{{< embed _code/analysis.ipynb#fig-wave >}}

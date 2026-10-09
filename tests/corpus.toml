@@ -1,0 +1,81 @@
+# Real course material for the doc-kit lab (`tests/run --set corpus`).
+#
+# Each repository is pinned to a commit; `tests/run setup` clones it into
+# work/corpus/<name>. Nothing from these repositories is committed here
+# (their licenses differ). `config` is written into the clone as
+# `config-file` before rendering; `profile` is passed to quarto.
+#
+#   docs     rendered by --set corpus
+#   more     added by --set all
+#   execute  run the code (false: render the outputs saved in the notebook)
+
+[[project]]
+name = "pydata-book"
+title = "Python for Data Analysis, 3rd ed. (wesm/pydata-book)"
+repo = "https://github.com/wesm/pydata-book"
+commit = "a892791ce5a3831134cfa2989033ecbb9289f1ea"
+dir = "."
+docs = ["ch04.ipynb", "ch05.ipynb", "ch07.ipynb", "ch08.ipynb", "ch09.ipynb", "ch10.ipynb", "ch11.ipynb"]
+more = ["ch02.ipynb", "ch03.ipynb", "ch06.ipynb", "ch12.ipynb", "ch13.ipynb", "appa.ipynb", "appb.ipynb"]
+execute = true
+formats = ["pdf", "phu-pdf", "phu-html"]
+config-file = "_quarto.yml"
+config = """
+project:
+  type: default
+execute:
+  error: true
+  freeze: false
+"""
+
+[[project]]
+name = "r4ds"
+title = "R for Data Science, 2nd ed. (hadley/r4ds)"
+repo = "https://github.com/hadley/r4ds"
+commit = "e7a2b797b6bff53602a6e1d2fbe6d0a0a2c01a17"
+dir = "."
+docs = ["data-visualize.qmd", "data-transform.qmd", "data-tidy.qmd", "layers.qmd", "EDA.qmd",
+        "communication.qmd", "logicals.qmd", "numbers.qmd", "strings.qmd", "factors.qmd",
+        "joins.qmd", "missing-values.qmd", "datetimes.qmd", "functions.qmd"]
+more = ["workflow-basics.qmd", "iteration.qmd", "regexps.qmd", "base-R.qmd", "data-import.qmd"]
+execute = true
+formats = ["pdf", "phu-pdf", "phu-html"]
+# r4ds is a book; this profile renders one chapter as its own document
+# (the same trick as the kit's _quarto-chapter.yml)
+profile = "lab"
+config-file = "_quarto-lab.yml"
+config = """
+project:
+  type: default
+execute:
+  error: true
+  freeze: false
+"""
+
+[[project]]
+name = "pdsh"
+title = "Python Data Science Handbook (jakevdp), saved outputs"
+repo = "https://github.com/jakevdp/PythonDataScienceHandbook"
+commit = "d66231454ef753818dc9213c9b5942e067266966"
+dir = "notebooks"
+docs = ["02.02-The-Basics-Of-NumPy-Arrays.ipynb", "02.04-Computation-on-arrays-aggregates.ipynb",
+        "02.06-Boolean-Arrays-and-Masks.ipynb", "02.07-Fancy-Indexing.ipynb",
+        "03.01-Introducing-Pandas-Objects.ipynb", "03.02-Data-Indexing-and-Selection.ipynb",
+        "03.04-Missing-Values.ipynb", "03.05-Hierarchical-Indexing.ipynb", "03.07-Merge-and-Join.ipynb",
+        "03.08-Aggregation-and-Grouping.ipynb", "03.09-Pivot-Tables.ipynb",
+        "03.11-Working-with-Time-Series.ipynb", "04.01-Simple-Line-Plots.ipynb",
+        "04.05-Histograms-and-Binnings.ipynb", "04.14-Visualization-With-Seaborn.ipynb"]
+more = ["02.01-Understanding-Data-Types.ipynb", "02.03-Computation-on-arrays-ufuncs.ipynb",
+        "02.05-Computation-on-arrays-broadcasting.ipynb", "02.08-Sorting.ipynb",
+        "02.09-Structured-Data-NumPy.ipynb", "03.03-Operations-in-Pandas.ipynb",
+        "03.06-Concat-And-Append.ipynb", "03.10-Working-With-Strings.ipynb",
+        "03.12-Performance-Eval-and-Query.ipynb", "05.02-Introducing-Scikit-Learn.ipynb"]
+execute = false
+formats = ["pdf", "phu-pdf", "phu-html"]
+config-file = "_quarto.yml"
+config = """
+project:
+  type: default
+execute:
+  enabled: false
+"""

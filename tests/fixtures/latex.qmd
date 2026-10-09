@@ -1,0 +1,110 @@
+---
+title: "LaTeX in documents"
+tex-packages: [pgfplots]
+---
+
+Shared macros: $\E[X] \in \R$, $\argmax_\theta \norm{x - \theta}$,
+$\dv{f}{x}$, $\abs{z}$.
+
+## Raw LaTeX blocks
+
+Drawings are native in the PDF and SVG images in HTML and EPUB.
+
+::: {#fig-tikz}
+```{=latex}
+\begin{tikzpicture}
+  \draw[->] (0,0) -- (2,0) node[right] {$x$};
+  \draw[->] (0,0) -- (0,1.5) node[above] {$y$};
+  \draw[accent, thick] (0,0) .. controls (1,1.5) .. (2,1);
+\end{tikzpicture}
+```
+
+A TikZ figure.
+:::
+
+```{=latex}
+\begin{tabular}{lrr}
+  \toprule
+  & $\alpha$ & $\beta$ \\
+  \midrule
+  run 1 & 0.12 & $-3.4$ \\
+  run 2 & 0.50 & $1.0$ \\
+  \bottomrule
+\end{tabular}
+```
+
+```{=latex}
+\begin{tikzpicture}
+  \begin{axis}[width=6cm, height=4cm, xlabel={$t$}]
+    \addplot[domain=0:6, samples=60, accent] {sin(deg(x))};
+  \end{axis}
+\end{tikzpicture}
+```
+
+A displayed formula drawn by LaTeX, with no drawing environment:
+
+```{=latex}
+$\displaystyle \oint_{\partial S} \mathbf{B}\cdot \mathrm{d}\mathbf{l} = \mu_0 I$
+```
+
+Layout commands draw nothing, so HTML leaves them out:
+
+```{=latex}
+\vspace{1em}
+```
+
+```{=latex}
+\newcommand{\onlyhere}{x}
+```
+
+```{=latex}
+\newpage
+```
+
+A block that fails to compile gives a warning and is left out of HTML
+(kept out of the PDF, where it would stop the build):
+
+::: {.content-visible unless-format="pdf"}
+```{=latex}
+\begin{tikzpicture}
+  \draw (0,0) -- (1,1)
+\end{tikzpicture}
+```
+:::
+
+## PDF-only and HTML-only content
+
+::: {.content-visible when-format="pdf"}
+This paragraph is only in the PDF.
+:::
+
+::: {.content-visible when-format="html"}
+This paragraph is only in HTML.
+:::
+
+## Results and callouts
+
+::: {#def-thing}
+## A definition
+Some text with $\vb{v} \in \R^3$.
+:::
+
+::: {#thm-thing}
+## A theorem
+By @def-thing, the result holds.
+:::
+
+::: {.proof}
+Trivial.
+:::
+
+::: {.callout-note}
+A note callout.
+:::
+
+::: {.callout-warning}
+## With a title
+A warning callout.
+:::
+
+See @fig-tikz and @thm-thing.

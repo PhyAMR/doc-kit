@@ -115,8 +115,8 @@ div.sourceCode::before {
   position: absolute; top: -0.75em; right: 0; background: $body-bg; padding-left: 0.4em;
   @include phu-label; font-size: 0.8rem; color: $phu-ink-faint;
 }
-/* console text (what phu-output.lua leaves as text) is tagged "out" */
-.cell-output-stdout, .cell-output-display, .cell-output-stderr {
+/* console text, exactly as printed: tagged "out", stderr "msg", errors "error" */
+.cell-output-stdout, .cell-output-display, .cell-output-stderr, .cell-output-error {
   > pre {
     position: relative; margin-left: 2.8em; background: transparent; border: 0;
     padding: 0; color: $phu-ink-soft; font-size: 0.8em; overflow: visible;
@@ -128,34 +128,18 @@ div.sourceCode::before {
   }
 }
 .cell-output-stderr > pre::before { content: "msg"; color: $phu-ink-faint; }
-.phu-frame .ix, .phu-array .ix { color: $phu-ink-faint; }
+.cell-output-error > pre::before { content: "error"; }
 
-/* --- arrays and data frames from code (phu display helpers) --------- */
-.phu-array { text-align: center; margin: 1em 0; }
-.phu-array table {
-  display: inline-table; width: auto; margin: 0 auto 0.2em;
-  font-family: $font-family-monospace; font-size: 0.78em; font-variant-numeric: tabular-nums;
-  border-left: 1px solid $phu-ink; border-right: 1px solid $phu-ink;
-  background:
-    linear-gradient($phu-ink, $phu-ink) top left / 6px 1px no-repeat,
-    linear-gradient($phu-ink, $phu-ink) bottom left / 6px 1px no-repeat,
-    linear-gradient($phu-ink, $phu-ink) top right / 6px 1px no-repeat,
-    linear-gradient($phu-ink, $phu-ink) bottom right / 6px 1px no-repeat;
-  border-top: 0 !important; border-bottom: 0 !important;
-  > * { border: 0 !important; }
-  tr { border: 0 !important; }
-  th, td {
-    border: 0 !important; padding: 1px 0.6em !important;
-    background: transparent !important; box-shadow: none !important;
-  }
-  thead th, .ix { color: #a29b8d; font-size: 0.85em; font-weight: 400; }
-  .neg { color: $phu-accent; }
+/* --- displayed data frames and matrices (by type: phu.py, phu.R) ---- */
+.cell-output-display {
+  table { width: auto; margin: 0.6em auto 0.2em; font-size: 0.9em; }
+  table td, table th { padding: 0.12em 0.6em; }
+  tbody th { color: $phu-ink-faint; font-weight: 400; }
+  p { text-align: center; @include phu-label; font-size: 0.8em; color: $phu-ink-faint; margin: 0; }
 }
-.phu-array p, .phu-frame p { @include phu-label; font-size: 0.8em; color: $phu-ink-faint; margin: 0; }
-.phu-frame { margin: 1em 0; overflow-x: auto; }
-.phu-frame table { width: auto; margin: 0 auto 0.2em; font-size: 0.9em; }
-.phu-frame p { text-align: center; }
-.phu-frame table td, .phu-frame table th { padding: 0.12em 0.6em; }
+.phu-array { text-align: center; margin: 0.6em 0; }
+.phu-array p { margin: 0; }
+.phu-shape { @include phu-label; font-size: 0.8em; color: $phu-ink-faint; }
 
 /* --- tables: booktabs ----------------------------------------------- */
 table.table {

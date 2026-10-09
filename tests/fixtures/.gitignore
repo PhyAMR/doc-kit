@@ -1,0 +1,8 @@
+.quarto/
+*_files/
+*.pdf
+*.html
+*.epub
+*.tex
+*.md
+!README.md

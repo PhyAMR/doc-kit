@@ -1,0 +1,657 @@
+#!/usr/bin/env python3
+"""doc-kit lab: render synthetic and real documents with the kit, keep every run.
+
+  tests/run setup              clone the corpus (corpus.toml), sync the Python env,
+                               install the R packages (env/r-packages.txt)
+  tests/run [run] [options]    render a set and write the dashboard
+      --set quick|corpus|master|all   quick (default): fixtures, newdoc report/book, unit tests
+      -j N                            units rendered in parallel (default 4)
+      --only GLOB                     keep renders whose project/format/doc matches
+      --formats F,...                 keep these formats
+  tests/run report             rebuild the dashboards from the stored runs
+  tests/run open               open the dashboard in the browser
+  tests/run prune [--keep N]   delete all but the newest N runs (default 10)
+
+A *unit* is one project in one format, rendered in its own copy under
+work/build, one document at a time; units run in parallel. Everything a
+render creates or changes in that copy is its output and goes to
+work/runs/<run>/out. Metrics come from those files; the dashboard
+(work/index.html) compares each run with the previous one.
+
+Formats `pdf` and `html` (no kit) are the baseline: a phu-* render that
+fails, or has more cell errors, where the plain one doesn't is a *kit*
+problem; failing in both is a *content* problem (the course code, the
+environment).
+"""
+
+from __future__ import annotations
+
+import argparse
+import concurrent.futures as cf
+import fnmatch
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import threading
+import time
+import tomllib
+import zipfile
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+
+TESTS = Path(__file__).resolve().parent
+KIT = TESTS.parent
+WORK = TESTS / "work"
+RUNS = WORK / "runs"
+BUILD = WORK / "build"
+CORPUS = WORK / "corpus"
+HISTORY = WORK / "history.jsonl"
+VENV_PY = TESTS / "env" / ".venv" / "bin" / "python"
+R_LIB = WORK / "R-lib"
+MASTER = Path.home() / "Master"
+
+sys.path.insert(0, str(TESTS))
+import lab_report  # noqa: E402
+
+FIXTURE_FORMATS = ["pdf", "html", "phu-pdf", "phu-html", "phu-epub"]
+BASELINE = {"phu-pdf": "pdf", "phu-html": "html", "phu-epub": "html"}
+TIMEOUT = 30 * 60
+QUARTO_FLAGS = ["-M", "keep-tex:true", "-M", "latex-clean:false", "-M", "keep-md:true",
+                "-M", "latex-auto-install:false"]
+SKIP_DIRS = {".quarto", ".git", ".ipynb_checkpoints", "__pycache__", ".jupyter_cache", "_freeze"}
+
+print_lock = threading.Lock()
+
+
+def say(*args):
+    with print_lock:
+        print(*args, flush=True)
+
+
+def sh(cmd, **kw):
+    return subprocess.run(cmd, text=True, capture_output=True, **kw)
+
+
+# --- units ---------------------------------------------------------------------
+@dataclass
+class Unit:
+    project: str
+    fmt: str                    # format label (quarto --to, or e.g. "book")
+    docs: list[str]             # relative to `cwd`; "." renders the whole project
+    prepare: object             # callable(build: Path) filling the build copy
+    to: str | None = None       # quarto --to; None = the project's own formats
+    execute: bool = False
+    profile: str | None = None
+    cwd: str = "."              # where quarto runs, inside the build copy
+    group: str | None = None    # units sharing a build copy run in sequence
+
+    @property
+    def key(self):
+        return f"{self.project}/{self.fmt}"
+
+
+def copy_tree(src: Path, dst: Path, exclude=()):
+    dst.mkdir(parents=True, exist_ok=True)
+    if not exclude:
+        subprocess.run(["cp", "-a", "--reflink=auto", f"{src}/.", str(dst)], check=True)
+        return
+    for item in src.iterdir():
+        if item.name in exclude:
+            continue
+        subprocess.run(["cp", "-a", "--reflink=auto", str(item), str(dst / item.name)], check=True)
+
+
+def link_kit(build: Path):
+    link = build / "_extensions"
+    if link.is_symlink() or link.exists():
+        if link.is_dir() and not link.is_symlink():
+            shutil.rmtree(link)
+        else:
+            link.unlink()
+    link.symlink_to(KIT / "extensions")
+
+
+def fixture_units(formats):
+    def prepare(build):
+        copy_tree(TESTS / "fixtures", build)
+        link_kit(build)
+    docs = sorted(p.name for p in (TESTS / "fixtures").glob("*.qmd"))
+    # documents written for the kit (its macros) have no plain baseline
+    kit_only = {"latex.qmd"}
+    return [Unit("fixtures", f, [d for d in docs if f.startswith("phu-") or d not in kit_only],
+                 prepare, to=f) for f in formats]
+
+
+def generated_units(formats):
+    newdoc = [sys.executable, str(KIT / "bin" / "newdoc")]
+
+    def report(build):
+        build.mkdir(parents=True, exist_ok=True)
+        subprocess.run([*newdoc, "report", str(build / "report"), "-t", "Lab report"],
+                       check=True, capture_output=True)
+
+    def book(build):
+        build.mkdir(parents=True, exist_ok=True)
+        subprocess.run([*newdoc, "book", str(build / "book"), "-t", "Lab book"],
+                       check=True, capture_output=True)
+
+    units = [Unit("newdoc-report", f, ["report.qmd"], report, to=f, cwd="report")
+             for f in formats if f.startswith("phu-")]
+    for f in ("phu-pdf", "phu-html"):
+        if f in formats:
+            units.append(Unit("newdoc-book", f, ["."], book, to=f, cwd="book"))
+    if "phu-pdf" in formats:
+        units.append(Unit("newdoc-book", "chapter-phu-pdf", ["chapters/01-introduction.qmd"], book,
+                          to="phu-pdf", profile="chapter", cwd="book"))
+    return units
+
+
+def corpus_units(more, formats):
+    conf = tomllib.loads((TESTS / "corpus.toml").read_text())
+    units = []
+    for p in conf["project"]:
+        clone = CORPUS / p["name"]
+        if not clone.exists():
+            say(f"  (skipping {p['name']}: not cloned; run `tests/run setup`)")
+            continue
+
+        def prepare(build, p=p, clone=clone):
+            copy_tree(clone / p["dir"], build, exclude={".git"})
+            (build / p["config-file"]).write_text(p["config"].lstrip())
+            link_kit(build)
+        docs = p["docs"] + (p.get("more", []) if more else [])
+        for f in p["formats"]:
+            if f in formats:
+                units.append(Unit(p["name"], f, docs, prepare, to=f, execute=p["execute"],
+                                  profile=p.get("profile")))
+    return units
+
+
+def master_units(formats):
+    if not MASTER.is_dir() or "book" not in formats:
+        return []
+    books = sorted(p.parent for p in MASTER.glob("*sem/*/notes/_quarto.yml"))
+    lock = threading.Lock()
+
+    def prepare(build, book):
+        # the Master layout (books refer to ../../../Notes/...), one copy per run
+        root = build.parent
+        with lock:
+            if not (root / "Notes").exists():
+                copy_tree(MASTER / "Notes", root / "Notes", exclude={"docs", "site", ".git"})
+                if (MASTER / "_includes").exists():
+                    copy_tree(MASTER / "_includes", root / "_includes")
+                sync = root / "Notes" / "pdf" / "_sync-look.py"
+                if sync.exists():
+                    subprocess.run([sys.executable, str(sync)], check=True, capture_output=True)
+        rel = book.relative_to(MASTER)
+        copy_tree(book, root / rel)
+        build.mkdir(parents=True, exist_ok=True)
+
+    units = []
+    for book in books:
+        rel = book.relative_to(MASTER)
+        name = f"master-{rel.parts[1]}"
+        units.append(Unit(name, "book", ["."], lambda b, book=book: prepare(b, book),
+                          cwd=f"../{rel}", group="master"))
+    return units
+
+
+# --- rendering -------------------------------------------------------------------
+def snapshot(root: Path):
+    out = {}
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        for f in filenames:
+            p = Path(dirpath) / f
+            try:
+                st = p.stat()
+            except OSError:
+                continue
+            out[str(p.relative_to(root))] = (st.st_size, st.st_mtime_ns)
+    return out
+
+
+def render_env():
+    env = os.environ.copy()
+    env["QUARTO_PYTHON"] = str(VENV_PY)
+    env["R_LIBS"] = str(R_LIB) + (":" + env["R_LIBS"] if env.get("R_LIBS") else "")
+    env.pop("VIRTUAL_ENV", None)
+    return env
+
+
+def slug(doc: str) -> str:
+    return "book" if doc == "." else re.sub(r"[^\w.-]+", "__", doc)
+
+
+def render_unit(unit: Unit, run_dir: Path, counter):
+    build = BUILD / run_dir.name / unit.project / unit.fmt
+    if unit.group == "master":
+        build = BUILD / run_dir.name / "master" / unit.project
+    if build.exists():
+        shutil.rmtree(build)
+    results = []
+    try:
+        unit.prepare(build)
+    except Exception as err:  # noqa: BLE001
+        for doc in unit.docs:
+            results.append({"project": unit.project, "fmt": unit.fmt, "doc": doc, "status": "fail",
+                            "seconds": 0, "error": f"prepare failed: {err}"})
+            counter()
+        return results
+    cwd = (build / unit.cwd).resolve()
+    root = build.parent if unit.group == "master" else build
+    env = render_env()
+    for doc in unit.docs:
+        before = snapshot(root)
+        cmd = ["quarto", "render"] + ([doc] if doc != "." else [])
+        if unit.to:
+            cmd += ["--to", unit.to]
+        if unit.profile:
+            cmd += ["--profile", unit.profile]
+        if unit.execute:
+            cmd.append("--execute")
+        cmd += QUARTO_FLAGS
+        out_dir = run_dir / "out" / unit.project / unit.fmt / slug(doc)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        t0 = time.monotonic()
+        try:
+            proc = subprocess.run(cmd, cwd=cwd, env=env, text=True, capture_output=True,
+                                  timeout=TIMEOUT, errors="replace")
+            status, code, log = ("ok" if proc.returncode == 0 else "fail"), proc.returncode, \
+                proc.stdout + proc.stderr
+        except subprocess.TimeoutExpired as err:
+            status, code = "timeout", None
+            log = "".join(x.decode(errors="replace") if isinstance(x, bytes) else (x or "")
+                          for x in (err.stdout, err.stderr))
+        seconds = round(time.monotonic() - t0, 1)
+        (out_dir / "render.log").write_text(" ".join(cmd) + "\n\n" + log)
+        after = snapshot(root)
+        files = []
+        for rel, sig in after.items():
+            if before.get(rel) != sig:
+                src, dst = root / rel, out_dir / "files" / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
+                files.append(rel)
+        res = {"project": unit.project, "fmt": unit.fmt, "doc": doc, "status": status,
+               "exit": code, "seconds": seconds, "out": str(out_dir.relative_to(run_dir)),
+               "files": sorted(files)}
+        res.update(measure(res, out_dir, log, doc))
+        results.append(res)
+        n = counter()
+        mark = {"ok": "✓", "fail": "✗", "timeout": "⧗"}[status]
+        say(f"  [{n}] {mark} {unit.project}/{unit.fmt}/{doc}  {seconds}s"
+            + (f"  ({res['metrics'].get('cell_errors', 0)} cell errors)" if res["metrics"].get("cell_errors") else ""))
+    shutil.rmtree(build, ignore_errors=True)
+    return results
+
+
+# --- metrics ---------------------------------------------------------------------
+NOISE = re.compile(r"Kernel is running over TCP|IPKernelApp\] WARNING")
+
+
+def pick(files, out_dir, doc, exts):
+    """The main output among `files` with one of `exts`: same stem as doc first."""
+    stem = Path(doc).stem if doc != "." else None
+    cands = [f for f in files if any(f.endswith(e) for e in exts)]
+    if stem:
+        same = [f for f in cands if Path(f).name.split(".")[0] == stem]
+        cands = same or cands
+    if not cands:
+        return None
+    return max(cands, key=lambda f: (out_dir / "files" / f).stat().st_size)
+
+
+def count(text, pattern):
+    return len(re.findall(pattern, text))
+
+
+def census(text, kind):
+    """What the output is made of: console blocks, tables, arrays, figures."""
+    if kind == "tex":
+        return {"console": count(text, r"\\begin\{(?:phuout|verbatim|Verbatim)\}"),
+                "tables": count(text, r"\\begin\{longtable\}"),
+                "arrays": count(text, r"\\begin\{bmatrix\}|\\left\[\\begin\{array\}"),
+                "figures": count(text, r"\\includegraphics")}
+    return {"console": count(text, r'cell-output-(?:stdout|stderr)[^>]*>\s*<pre'),
+            "tables": count(text, r"<table"),
+            "arrays": count(text, r'class="[^"]*phu-array'),
+            "figures": count(text, r"<img |<svg ")}
+
+
+def measure(res, out_dir, log, doc):
+    files = res["files"]
+    m = {}
+    warn = [ln.strip() for ln in log.splitlines()
+            if re.match(r"\s*(WARN|WARNING)\b", ln) and not NOISE.search(ln)]
+    m["quarto_warnings"] = len(warn)
+    outputs = {}
+    md = pick(files, out_dir, doc, [".md"])
+    if md:
+        text = (out_dir / "files" / md).read_text(errors="replace")
+        m["cell_errors"] = count(text, r"cell-output-error")
+        m["cell_stderr"] = count(text, r"cell-output-stderr")
+        m["kit_warnings"] = count(text, r"FormatterWarning|doc-kit:|\bphu: ")
+    pdf = pick(files, out_dir, doc, [".pdf"])
+    if pdf:
+        outputs["pdf"] = f"files/{pdf}"
+        info = sh(["pdfinfo", str(out_dir / "files" / pdf)]).stdout
+        pages = re.search(r"Pages:\s+(\d+)", info)
+        m["pages"] = int(pages.group(1)) if pages else None
+    tex = pick(files, out_dir, doc, [".tex"])
+    if tex:
+        m["census"] = census((out_dir / "files" / tex).read_text(errors="replace"), "tex")
+    texlog = pick(files, out_dir, doc, [".log"])
+    if texlog:
+        tl = (out_dir / "files" / texlog).read_text(errors="replace")
+        m["overfull"] = count(tl, r"Overfull \\hbox")
+        m["missing_chars"] = count(tl, r"Missing character")
+        m["undefined_refs"] = count(tl, r"LaTeX Warning: (?:Reference|Citation) .* undefined")
+    html = pick([f for f in files if not f.endswith(("search.json",))], out_dir, doc, [".html"])
+    if html and not pdf:
+        outputs["html"] = f"files/{html}"
+        m["census"] = census((out_dir / "files" / html).read_text(errors="replace"), "html")
+    epub = pick(files, out_dir, doc, [".epub"])
+    if epub:
+        outputs["epub"] = f"files/{epub}"
+        text = ""
+        with zipfile.ZipFile(out_dir / "files" / epub) as z:
+            for name in z.namelist():
+                if name.endswith((".xhtml", ".html")):
+                    text += z.read(name).decode("utf-8", "replace")
+        m["census"] = census(text, "html")
+    errs = [ln for ln in log.splitlines() if re.search(r"^ERROR|^Error|! LaTeX Error|^! ", ln)]
+    return {"metrics": m, "outputs": outputs, "warnings": warn[:30], "errors": errs[:30]}
+
+
+def thumbnails(run_dir: Path, results):
+    for r in results:
+        pdf = r.get("outputs", {}).get("pdf")
+        if not pdf:
+            continue
+        dst = run_dir / "thumbs" / r["project"] / r["fmt"] / slug(r["doc"])
+        dst.mkdir(parents=True, exist_ok=True)
+        sh(["pdftoppm", "-r", "30", "-png", "-l", "80", str(run_dir / r["out"] / pdf), str(dst / "p")])
+        r["thumbs"] = sorted(str(p.relative_to(run_dir)) for p in dst.glob("p-*.png"))
+
+
+def compare(run_dir: Path, prev_dir: Path | None, results, prev_results):
+    if not prev_dir:
+        return
+    prev = {(p["project"], p["fmt"], p["doc"]): p for p in prev_results}
+    for r in results:
+        old = prev.get((r["project"], r["fmt"], r["doc"]))
+        if not old or not r.get("thumbs") or not old.get("thumbs"):
+            continue
+        changed = []
+        for i, (a, b) in enumerate(zip(r["thumbs"], old["thumbs"]), 1):
+            pa, pb = run_dir / a, prev_dir / b
+            if not pb.exists():
+                continue
+            p = sh(["magick", "compare", "-metric", "AE", "-fuzz", "8%", str(pa), str(pb), "null:"])
+            try:
+                diff = float(p.stderr.split()[0])
+            except (ValueError, IndexError):
+                diff = 1e9  # different sizes
+            if diff > 30:
+                changed.append(i)
+        r["changed_pages"] = changed
+        r["page_delta"] = len(r["thumbs"]) - len(old["thumbs"])
+
+
+def classify(results):
+    by = {}
+    for r in results:
+        by.setdefault((r["project"], r["doc"]), {})[r["fmt"]] = r
+    for (_, _), fmts in by.items():
+        for f, r in fmts.items():
+            base = fmts.get(BASELINE.get(f, ""))
+            m = r.get("metrics", {})
+            if r["status"] != "ok":
+                if base is None:
+                    r["class"] = "fail"
+                elif base["status"] == "ok":
+                    r["class"], r["why"] = "kit", f"fails here, {base['fmt']} renders"
+                else:
+                    r["class"], r["why"] = "content", f"{base['fmt']} fails too"
+                continue
+            if f not in BASELINE:
+                r["class"] = "ok"
+            elif m.get("kit_warnings"):
+                r["class"], r["why"] = "kit", f"{m['kit_warnings']} kit warnings in the output"
+            elif base and base["status"] == "ok" and \
+                    m.get("cell_errors", 0) > base.get("metrics", {}).get("cell_errors", 0):
+                r["class"], r["why"] = "kit", (f"{m.get('cell_errors')} cell errors, "
+                                               f"{base['fmt']} has {base['metrics'].get('cell_errors', 0)}")
+            else:
+                r["class"] = "ok"
+            if r["class"] == "ok" and m.get("cell_errors"):
+                r["why"] = f"{m['cell_errors']} cell errors (also without the kit)"
+
+
+# --- unit tests ------------------------------------------------------------------
+def unit_tests(run_dir: Path):
+    out = []
+    tests = [("unit", "python", [str(VENV_PY), "-m", "pytest", "-q", str(TESTS / "unit")]),
+             ("unit", "r", ["Rscript", str(TESTS / "unit" / "test_phu.R")])]
+    for project, fmt, cmd in tests:
+        if fmt == "python" and not any((TESTS / "unit").glob("test_*.py")):
+            continue
+        if fmt == "r" and not (TESTS / "unit" / "test_phu.R").exists():
+            continue
+        t0 = time.monotonic()
+        p = subprocess.run(cmd, text=True, capture_output=True, env=render_env(), cwd=TESTS)
+        log_rel = Path("out") / project / fmt / "test.log"
+        (run_dir / log_rel).parent.mkdir(parents=True, exist_ok=True)
+        (run_dir / log_rel).write_text(p.stdout + p.stderr)
+        tail = (p.stdout + p.stderr).strip().splitlines()[-1:] or [""]
+        out.append({"project": project, "fmt": fmt, "doc": "tests", "status": "ok" if p.returncode == 0 else "fail",
+                    "class": "ok" if p.returncode == 0 else "kit", "why": tail[0][:200],
+                    "seconds": round(time.monotonic() - t0, 1), "out": str(log_rel.parent),
+                    "metrics": {}, "outputs": {"log": "test.log"}})
+        say(f"  {'✓' if p.returncode == 0 else '✗'} unit/{fmt}: {tail[0][:100]}")
+    return out
+
+
+# --- commands --------------------------------------------------------------------
+def kit_state():
+    sha = sh(["git", "-C", str(KIT), "rev-parse", "--short", "HEAD"]).stdout.strip()
+    subject = sh(["git", "-C", str(KIT), "log", "-1", "--format=%s"]).stdout.strip()
+    # the kit's state: the lab itself (tests/) doesn't count
+    dirty = sh(["git", "-C", str(KIT), "status", "--porcelain", "--", ".", ":!tests"]).stdout.strip()
+    diffstat = sh(["git", "-C", str(KIT), "diff", "--shortstat", "--", ".", ":!tests"]).stdout.strip()
+    return {"sha": sha, "subject": subject, "dirty": bool(dirty), "diffstat": diffstat}
+
+
+def check_hooks():
+    notes = []
+    startup = Path.home() / ".ipython/profile_default/startup/50-doc-kit.py"
+    if not (startup.exists() and startup.resolve() == (KIT / "python" / "ipython_startup.py").resolve()):
+        notes.append(f"IPython hook missing or not this checkout: {startup}")
+    rprofile = Path.home() / ".Rprofile"
+    if str(KIT / "r" / "phu.R") not in (rprofile.read_text() if rprofile.exists() else ""):
+        notes.append("~/.Rprofile has no doc-kit line (run install.sh)")
+    if not VENV_PY.exists():
+        notes.append("no lab venv: run `tests/run setup`")
+    return notes
+
+
+def cmd_run(args):
+    sets = {"quick": {"fixtures", "generated", "unit"}, "corpus": {"corpus"},
+            "master": {"master"}, "all": {"fixtures", "generated", "unit", "corpus", "master"}}[args.set]
+    formats = set(args.formats.split(",")) if args.formats else None
+
+    def fm(fs):
+        return [f for f in fs if formats is None or f in formats]
+    units = []
+    if "fixtures" in sets:
+        units += fixture_units(fm(FIXTURE_FORMATS))
+    if "generated" in sets:
+        units += generated_units(fm(["phu-pdf", "phu-html", "phu-epub"]))
+    if "corpus" in sets:
+        units += corpus_units(args.set == "all", fm(["pdf", "html", "phu-pdf", "phu-html", "phu-epub"]))
+    if "master" in sets:
+        units += master_units(fm(["book"]))
+    if args.only:
+        for u in units:
+            u.docs = [d for d in u.docs if fnmatch.fnmatch(f"{u.project}/{u.fmt}/{d}", args.only)
+                      or fnmatch.fnmatch(f"{u.project}/{d}", args.only)]
+        units = [u for u in units if u.docs]
+
+    state = kit_state()
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    run_id = f"{stamp}_{state['sha']}{'+dirty' if state['dirty'] else ''}"
+    run_dir = RUNS / run_id
+    run_dir.mkdir(parents=True)
+    notes = check_hooks()
+    for n in notes:
+        say(f"! {n}")
+    total = sum(len(u.docs) for u in units)
+    say(f"run {run_id}: {total} renders in {len(units)} units, -j {args.jobs}")
+
+    done = [0]
+    lock = threading.Lock()
+
+    def counter():
+        with lock:
+            done[0] += 1
+            return f"{done[0]}/{total}"
+
+    t0 = time.monotonic()
+    results = []
+    if "unit" in sets and not args.only:
+        results += unit_tests(run_dir)
+    # units that share a build copy (Master books) run one after the other
+    solo = [u for u in units if not u.group]
+    grouped = {}
+    for u in units:
+        if u.group:
+            grouped.setdefault(u.group, []).append(u)
+    with cf.ThreadPoolExecutor(max_workers=args.jobs) as pool:
+        futs = [pool.submit(render_unit, u, run_dir, counter) for u in solo]
+        futs += [pool.submit(lambda us=us: [r for u in us for r in render_unit(u, run_dir, counter)])
+                 for us in grouped.values()]
+        for f in cf.as_completed(futs):
+            results += f.result()
+    shutil.rmtree(BUILD / run_id, ignore_errors=True)
+
+    classify(results)
+    thumbnails(run_dir, results)
+    prev = previous_run(run_id, {(r["project"], r["fmt"], r["doc"]) for r in results})
+    compare(run_dir, RUNS / prev["id"] if prev else None, results,
+            json.loads((RUNS / prev["id"] / "results.json").read_text())["results"] if prev else [])
+    summary = summarize(results)
+    record = {"id": run_id, "time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+              "set": args.set, "only": args.only, "kit": state, "seconds": round(time.monotonic() - t0),
+              "notes": notes, "summary": summary, "previous": prev["id"] if prev else None}
+    (run_dir / "results.json").write_text(json.dumps({**record, "results": results}, indent=1))
+    with HISTORY.open("a") as fh:
+        fh.write(json.dumps(record) + "\n")
+    lab_report.write_all(WORK)
+    s = summary
+    say(f"\n{s['renders']} renders: {s['ok']} ok, {s['kit']} kit, {s['content']} content, "
+        f"{s['fail']} other failures; {s['changed']} with changed pages; {record['seconds']}s")
+    say(f"dashboard: {WORK / 'index.html'}")
+    return 1 if s["kit"] else 0
+
+
+def summarize(results):
+    s = {"renders": len(results), "ok": 0, "kit": 0, "content": 0, "fail": 0, "changed": 0,
+         "overfull": 0, "cell_errors": 0, "seconds": 0}
+    for r in results:
+        s[r.get("class", "fail")] = s.get(r.get("class", "fail"), 0) + 1
+        s["changed"] += bool(r.get("changed_pages"))
+        s["overfull"] += r.get("metrics", {}).get("overfull", 0) or 0
+        s["cell_errors"] += r.get("metrics", {}).get("cell_errors", 0) or 0
+        s["seconds"] += r.get("seconds", 0) or 0
+    s["seconds"] = round(s["seconds"])
+    return s
+
+
+def history():
+    if not HISTORY.exists():
+        return []
+    return [json.loads(line) for line in HISTORY.read_text().splitlines() if line.strip()]
+
+
+def previous_run(run_id, keys):
+    """Newest earlier run that rendered any of the same documents."""
+    for rec in reversed(history()):
+        if rec["id"] == run_id or not (RUNS / rec["id"] / "results.json").exists():
+            continue
+        res = json.loads((RUNS / rec["id"] / "results.json").read_text())["results"]
+        if keys & {(r["project"], r["fmt"], r["doc"]) for r in res}:
+            return rec
+    return None
+
+
+def cmd_setup(_args):
+    conf = tomllib.loads((TESTS / "corpus.toml").read_text())
+    CORPUS.mkdir(parents=True, exist_ok=True)
+    for p in conf["project"]:
+        dest = CORPUS / p["name"]
+        if not dest.exists():
+            say(f"cloning {p['name']} @ {p['commit'][:7]}")
+            subprocess.run(["git", "init", "-q", str(dest)], check=True)
+            subprocess.run(["git", "-C", str(dest), "remote", "add", "origin", p["repo"]], check=True)
+        head = sh(["git", "-C", str(dest), "rev-parse", "HEAD"]).stdout.strip()
+        if head != p["commit"]:
+            subprocess.run(["git", "-C", str(dest), "fetch", "-q", "--depth", "1", "origin", p["commit"]], check=True)
+            subprocess.run(["git", "-C", str(dest), "checkout", "-q", "--force", "FETCH_HEAD"], check=True)
+        say(f"  {p['name']}: {p['commit'][:7]}")
+    say("python env: uv sync")
+    subprocess.run(["uv", "sync", "--quiet"], cwd=TESTS / "env", check=True)
+    say("R packages into work/R-lib (missing ones only; compiles from source)")
+    R_LIB.mkdir(parents=True, exist_ok=True)
+    code = ('pk <- trimws(readLines("env/r-packages.txt")); pk <- pk[nzchar(pk) & !startsWith(pk, "#")];'
+            'need <- setdiff(pk, rownames(installed.packages()));'
+            'if (length(need)) install.packages(need, lib = Sys.getenv("R_LIBS"),'
+            ' repos = "https://cloud.r-project.org", Ncpus = parallel::detectCores());'
+            'cat("missing:", setdiff(pk, rownames(installed.packages())), "\\n")')
+    subprocess.run(["Rscript", "-e", code], cwd=TESTS, env={**os.environ, "R_LIBS": str(R_LIB)}, check=True)
+    for n in check_hooks():
+        say(f"! {n}")
+
+
+def cmd_prune(args):
+    runs = sorted(p for p in RUNS.iterdir() if p.is_dir()) if RUNS.exists() else []
+    for p in runs[: max(0, len(runs) - args.keep)]:
+        shutil.rmtree(p)
+        say(f"deleted {p.name}")
+    keep = {p.name for p in RUNS.iterdir()} if RUNS.exists() else set()
+    if HISTORY.exists():
+        HISTORY.write_text("".join(json.dumps(r) + "\n" for r in history() if r["id"] in keep))
+    lab_report.write_all(WORK)
+
+
+def main():
+    p = argparse.ArgumentParser(prog="tests/run", description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("command", nargs="?", default="run", choices=["run", "setup", "report", "open", "prune"])
+    p.add_argument("--set", default="quick", choices=["quick", "corpus", "master", "all"])
+    p.add_argument("-j", "--jobs", type=int, default=4)
+    p.add_argument("--only")
+    p.add_argument("--formats")
+    p.add_argument("--keep", type=int, default=10)
+    args = p.parse_args()
+    WORK.mkdir(exist_ok=True)
+    if args.command == "setup":
+        cmd_setup(args)
+    elif args.command == "report":
+        lab_report.write_all(WORK)
+        print(WORK / "index.html")
+    elif args.command == "open":
+        subprocess.Popen(["xdg-open", str(WORK / "index.html")])
+    elif args.command == "prune":
+        cmd_prune(args)
+    else:
+        sys.exit(cmd_run(args))
+
+
+if __name__ == "__main__":
+    main()

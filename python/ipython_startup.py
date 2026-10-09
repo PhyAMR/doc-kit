@@ -1,6 +1,7 @@
 # doc-kit: linked by install.sh as ~/.ipython/profile_default/startup/50-doc-kit.py.
-# In a kernel started by Quarto for a book or report (phu-* formats), set
-# the plot style (phu.py). Output is left alone. PHU_DISPLAY=0 turns it off.
+# In a kernel started by Quarto for a document that uses the look (phu-*
+# formats, `phu-look: true`), phu.setup() sets the plot style and renders
+# displayed values by type (phu.py). PHU_DISPLAY=0 turns it off.
 def _doc_kit_setup():
     import os
     import sys

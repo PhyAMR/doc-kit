@@ -1,0 +1,10 @@
+# Fixtures for the doc-kit lab. `tests/run` renders every document here in
+# each format of the matrix (plain pdf/html as the baseline, phu-pdf,
+# phu-html, phu-epub). Errors stay in the output so one bad cell doesn't
+# hide the rest; the runner counts them.
+project:
+  type: default
+execute:
+  error: true
+  warning: true
+  freeze: false

@@ -7,11 +7,12 @@
      them in every formula.
 
   2. LaTeX cells. A ```{=latex} block is passed through to the PDF as is.
-     For HTML and EPUB it is compiled (pdflatex + pdftocairo) to an SVG and shown
-     as an image when it draws something: tikzpicture, circuitikz, axis,
-     tabular, forest, or any block whose first line is `% svg`. Other
-     LaTeX blocks (\newpage, \vspace...) just don't appear in HTML; start
-     a block with `% pdf-only` to skip the SVG on purpose.
+     For HTML and EPUB every block is compiled (lualatex, as the PDF, and
+     pdftocairo, in a standalone page where \newpage and friends do
+     nothing) and shown as an SVG image if it draws anything; blocks that
+     draw nothing (\vspace, \newcommand...) are left out. Nothing is decided from the block's
+     text. PDF-only content: ::: {.content-visible when-format="pdf"}.
+     A block LaTeX can't compile is left out of HTML with a warning.
      SVGs are cached in .quarto/phu-svg/ (project, else document folder).
 
   3. tex-packages. A list in the front matter, e.g.
@@ -20,14 +21,14 @@
 
   4. The look (books and reports: the phu-* formats set phu-look: true).
      In the PDF callouts become phucallout and code cells get their
-     language tag (\phucodelang). In every format, code output goes
-     through phu-output.lua: ordinary print()/cat()/display output that
-     looks like an array, a data frame or a loop's table is typeset in
-     the look; the rest stays console text. Code is never changed.
+     language tag (\phucodelang). Code output goes through phu-output.lua,
+     which styles it by kind (console text, displayed table, matrix) and
+     never reads its text. What a displayed value becomes is decided in
+     the kernels by its type (python/phu.py, r/phu.R). Code is never
+     changed.
 --]]
 
 local MACROS = quarto.utils.resolve_path("phu-macros.tex")
-local SVG_ENVS = { "tikzpicture", "circuitikz", "axis", "tabular", "forest" }
 
 local packages = {}
 
@@ -62,16 +63,6 @@ local function mathjax_macros()
   return table.concat(out, "\n")
 end
 
-local function wants_svg(text)
-  local first = text:match("^%s*([^\n]*)") or ""
-  if first:match("^%%%s*pdf%-only") then return false end
-  if first:match("^%%%s*svg") then return true end
-  for _, env in ipairs(SVG_ENVS) do
-    if text:find("\\begin{" .. env .. "}", 1, true) then return true end
-  end
-  return false
-end
-
 local function svg_preamble()
   local lines = { "\\documentclass[border=2pt]{standalone}", "\\usepackage{phunotes}" }
   for _, p in ipairs(packages) do
@@ -80,10 +71,24 @@ local function svg_preamble()
   return table.concat(lines, "\n")
 end
 
--- Returns the SVG text, or nil (with a warning) when LaTeX fails.
+-- page-level commands mean nothing in a standalone picture
+local NO_PAGES = "\\renewcommand\\newpage{}\\renewcommand\\clearpage{}" ..
+  "\\renewcommand\\cleardoublepage{}\\renewcommand\\pagebreak[1][]{}" ..
+  "\\renewcommand\\nopagebreak[1][]{}"
+
+-- Does the SVG draw anything? pdftocairo keeps glyphs and clip paths in
+-- <defs> and draws with <use>, <path> and <image> outside it.
+local function draws(svg)
+  local body = svg:gsub("<defs>.-</defs>", "")
+  return body:find("<path", 1, true) or body:find("<use", 1, true) or body:find("<image", 1, true)
+end
+
+-- The SVG text of a LaTeX block; "" when it draws nothing; nil (with a
+-- warning) when LaTeX fails.
 local function to_svg(code)
   local docdir = pandoc.path.directory(quarto.doc.input_file)
-  local source = svg_preamble() .. "\n\\begin{document}\n" .. code .. "\n\\end{document}\n"
+  local source = svg_preamble() .. "\n\\begin{document}\n\\begingroup" .. NO_PAGES .. "\n" ..
+    code .. "\n\\endgroup\n\\end{document}\n"
   local root = quarto.project.directory or docdir
   local cache_dir = pandoc.path.join({ root, ".quarto", "phu-svg" })
   local cached = pandoc.path.join({ cache_dir, pandoc.utils.sha1(source) .. ".svg" })
@@ -96,10 +101,11 @@ local function to_svg(code)
     write(tex, source)
     -- from the document's folder, so \includegraphics/\input paths work
     local ok = pandoc.system.with_working_directory(docdir, function()
-      return pcall(pandoc.pipe, "pdflatex",
+      return pcall(pandoc.pipe, "lualatex",
         { "-interaction=nonstopmode", "-halt-on-error", "-output-directory=" .. tmp, tex }, "")
     end)
-    if not ok then
+    local pdf = pandoc.path.join({ tmp, "cell.pdf" })
+    if not ok or not read(pdf) then
       local log = read(pandoc.path.join({ tmp, "cell.log" })) or ""
       local err = log:match("\n(! [^\n]*\n[^\n]*)") or "see the LaTeX log"
       quarto.log.warning("phu: LaTeX cell failed, left out of HTML:\n" .. err ..
@@ -107,8 +113,10 @@ local function to_svg(code)
       return
     end
     local svgfile = pandoc.path.join({ tmp, "cell.svg" })
-    pandoc.pipe("pdftocairo", { "-svg", pandoc.path.join({ tmp, "cell.pdf" }), svgfile }, "")
-    svg = read(svgfile)
+    if pcall(pandoc.pipe, "pdftocairo", { "-svg", pdf, svgfile }, "") then
+      svg = read(svgfile)
+      if svg and not draws(svg) then svg = "" end
+    end
   end)
   if svg then
     pandoc.system.make_directory(cache_dir, true)
@@ -212,11 +220,9 @@ return {
     end,
     RawBlock = function(el)
       local web = quarto.doc.is_format("html") or quarto.doc.is_format("epub")
-      if not (web and is_latex(el.format) and wants_svg(el.text)) then
-        return nil
-      end
+      if not (web and is_latex(el.format)) then return nil end
       local svg = to_svg(el.text)
-      if not svg then return {} end
+      if not svg or svg == "" then return {} end
       local src = "data:image/svg+xml;base64," .. quarto.base64.encode(svg)
       return pandoc.Para({ pandoc.Image({}, src, "", pandoc.Attr("", { "phu-svg" })) })
     end,

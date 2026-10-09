@@ -1,0 +1,71 @@
+---
+title: "Hostile text: Python"
+jupyter: python3
+---
+
+Data and printed text full of characters that mean something to Markdown,
+LaTeX, HTML or Quarto. Each must come out literally, wherever it appears,
+and nothing printed may change kind because of what it looks like.
+
+```{python}
+import pandas as pd
+
+nasty = [
+    "$5 and $10", "50% off", "a & b", "#hashtag", "{braces}", "~tilde", "x^2",
+    r"C:\path\to\file", "a|b|c", "*stars*", "**bold**", "_under_", "<b>tag</b>",
+    "`code`", "@cite", "[link](http://x.y)", "{{< meta title >}}", "::: div",
+    "- item", "# Heading", r"\textbf{x}", "$x^2$", r"\(y\)", "--", "...",
+    "'single' \"double\"", "1e-5", "-", "NA", "[1] 2 3", "   leading spaces", "",
+]
+frame = pd.DataFrame({"text": nasty, "n": range(len(nasty))})
+specials = "$%&#_{}~^|*<>@[]`!?=+;:,.'\"-/()\\0123"
+frame.index = [f"r{i}{c}" for i, c in enumerate(specials[: len(nasty)])]
+frame
+```
+
+Column names and a Series:
+
+```{python}
+pd.DataFrame([[1, 2, 3, 4, 5, 6]],
+             columns=["price ($)", "rate_%", "a|b", "<col>", "#n", r"x\y"])
+```
+
+```{python}
+pd.Series([1.5, -2.0, 3.25], index=["$a$", "b_c", "<d>"], name="weird & name")
+```
+
+`print()` of all of it stays console text:
+
+```{python}
+for s in nasty:
+    print(s)
+```
+
+Printed text that only *looks* like an array, a data frame, an R vector or a
+loop table must stay console text:
+
+```{python}
+print("[[1 2]\n [3 4]]")
+```
+
+```{python}
+print("   a  b\n0  1  2\n1  3  4")
+```
+
+```{python}
+print("[1] 1 2 3")
+```
+
+```{python}
+print("step 1 cost=0.5\nstep 2 cost=0.4\nstep 3 cost=0.3")
+```
+
+```{python}
+print("$x$ **not bold** <b>not html</b> {{< meta title >}} \\newpage")
+```
+
+A string value displayed (not printed) is its repr:
+
+```{python}
+"$x$ & <b>not html</b> 100%"
+```

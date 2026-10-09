@@ -1,0 +1,38 @@
+[project]
+name = "doc-kit-lab"
+version = "0"
+description = "Python side of the doc-kit test lab: course libraries and Quarto's Jupyter deps"
+requires-python = ">=3.12"
+dependencies = [
+    # what the courses use
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "seaborn",
+    "scipy",
+    "statsmodels",
+    "patsy",
+    "scikit-learn",
+    "lxml",
+    "beautifulsoup4",
+    "html5lib",
+    "requests",
+    "sqlalchemy",
+    "openpyxl",
+    "tables",
+    "pyarrow",
+    "sympy",
+    "jinja2",
+    "tabulate",
+    # Quarto's Jupyter engine
+    "ipykernel",
+    "nbclient",
+    "nbformat",
+    "pyyaml",
+    "jupyter-cache",
+    # unit tests
+    "pytest",
+]
+
+[tool.uv]
+package = false

@@ -1,0 +1,65 @@
+---
+title: "Code from files: R"
+---
+
+Ways to bring code that lives in `.R` files into a document.
+
+```{r}
+#| include: false
+source("_code/_common.R")
+```
+
+## A hidden setup file (the r4ds pattern)
+
+`_code/_common.R` was sourced by a hidden chunk at the top:
+
+```{r}
+common_loaded
+```
+
+## `file:` chunk option
+
+knitr reads the chunk's code from the file: shown and run.
+
+```{r}
+#| file: _code/helpers.R
+```
+
+```{r}
+moving_average(1:6)
+```
+
+## Include shortcode inside a code chunk
+
+```{r}
+{{< include _code/helpers.R >}}
+greeting
+```
+
+## Named sections of a script (`knitr::read_chunk`)
+
+```{r}
+#| include: false
+knitr::read_chunk("_code/helpers.R")
+```
+
+```{r}
+#| label: greeting
+```
+
+```{r}
+greeting
+```
+
+## `code:` from an expression
+
+```{r}
+#| code: !expr readLines("_code/helpers.R")[3:5]
+```
+
+## Show a file without running it
+
+```{r}
+#| eval: false
+#| file: _code/helpers.R
+```

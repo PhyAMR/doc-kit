@@ -32,13 +32,11 @@
 div.sourceCode { border-top: 1px solid; border-bottom: 1px solid #c9c0ad; }
 .cell-output-stdout pre { margin-left: 2em; opacity: 0.8; }
 
-/* arrays and tables */
+/* displayed data frames and matrices */
+.cell-output-display table { margin: 0.5em auto; }
+.cell-output-display tbody th { opacity: 0.6; font-weight: normal; }
+.cell-output-display p, .phu-shape { font-variant: small-caps; font-size: 0.85em; opacity: 0.7; text-align: center; }
 .phu-array { text-align: center; }
-.phu-array table { display: inline-table; border-left: 1px solid; border-right: 1px solid; }
-.phu-array td, .phu-array th { padding: 0 0.6em; text-align: right; }
-.phu-array thead th, .phu-array td:first-child { opacity: 0.55; font-size: 0.85em; }
-.phu-array .neg { color: #b4442b; }
-.phu-array p, .phu-frame p { font-variant: small-caps; font-size: 0.85em; opacity: 0.7; }
 table { border-collapse: collapse; }
 thead tr { border-top: 1.5px solid; border-bottom: 0.8px solid; }
 tbody tr:last-child { border-bottom: 1.5px solid; }

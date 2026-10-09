@@ -23,7 +23,9 @@
 \RequirePackage{amsthm}
 \RequirePackage{etoolbox}
 \RequirePackage{enumitem}
-\RequirePackage{fvextra}
+% fancyvrb, not fvextra: fvextra loads lineno, and with lineno a box taller
+% than the page (a big figure) makes LaTeX ship empty pages forever.
+\RequirePackage{fancyvrb}
 \RequirePackage{tikz}
 \RequirePackage[framemethod=TikZ]{mdframed}
 \RequirePackage{caption}
@@ -47,14 +49,40 @@
     \@for\phu@s:=\phu@keep\do{\expandafter\let\csname\phu@s\expandafter\endcsname
       \csname phu@k@\phu@s\endcsname}
     \RequirePackage[scale=0.85]{plex-mono}
-  \else % LuaLaTeX / XeLaTeX (Quarto's plain pdf format): fontspec
+  \else % LuaLaTeX (phu-pdf, Quarto's pdf) / XeLaTeX: fontspec
     \RequirePackage{fontspec}
+    \ifdefined\directlua
+      % Characters the look's fonts lack (Greek in Plex Mono, CJK, Hebrew,
+      % emoji, rare symbols) come from fallback fonts, the installed ones of
+      % these, so no character in printed output stops the PDF.
+      \directlua{
+        local function installed(faces)
+          local out = {}
+          for _, face in ipairs(faces) do
+            local file = face:match("^[^(]+")
+            if kpse.find_file(file, "opentype fonts") or kpse.find_file(file, "truetype fonts") then
+              table.insert(out, "file:" .. face .. ":mode=harf;")
+            end
+          end
+          return out
+        end
+        luaotfload.add_fallback("phuserif", installed({"FreeSerif.otf", "NotoSansCJK-Regular.ttc(0)",
+          "NotoSansHebrew-Regular.ttf", "NotoColorEmoji.ttf"}))
+        luaotfload.add_fallback("phumono", installed({"NotoSansMono-Regular.ttf", "DejaVuSansMono.ttf",
+          "NotoSansCJK-Regular.ttc(0)", "NotoSansHebrew-Regular.ttf", "NotoColorEmoji.ttf"}))
+      }
+      \defaultfontfeatures[EBGaramond]{RawFeature={fallback=phuserif}}
+      \defaultfontfeatures[IBMPlexMono]{RawFeature={fallback=phumono}}
+    \fi
     \setmainfont{EBGaramond}[Extension=.otf, UprightFont=*-Regular,
       ItalicFont=*-Italic, BoldFont=*-SemiBold, BoldItalicFont=*-SemiBoldItalic,
       Numbers=Lining]
     \setmonofont{IBMPlexMono}[Extension=.otf, UprightFont=*-Regular,
       ItalicFont=*-Italic, BoldFont=*-SemiBold, Scale=0.85]
-    \@ifpackageloaded{unicode-math}{\setmathfont{Garamond-Math.otf}[StylisticSet={7,9}]}{}
+    % a bold version too, or \boldsymbol (\vb, \vec) finds no glyphs
+    \@ifpackageloaded{unicode-math}{%
+      \setmathfont{Garamond-Math.otf}[StylisticSet={7,9}]%
+      \setmathfont{Garamond-Math.otf}[StylisticSet={7,9}, version=bold, FakeBold=2]}{}
   \fi
 \fi
 \RequirePackage{microtype} % after the fonts; \textls for the labels
@@ -230,8 +258,8 @@
   {\end{mdframed}}
 
 % --- code and code output ---------------------------------------------
-% phu.lua puts \phucodelang{python} before each code cell and wraps text
-% output in phuout.
+% phu.lua puts \phucodelang{python} before each code cell; phu-output.lua
+% puts console output (stdout, messages, errors) in phuout[out|msg|error].
 \newcommand*\phu@lang{}
 \newcommand*\phucodelang[1]{\gdef\phu@lang{#1}}
 \newcommand*\phu@langtag{%
@@ -255,24 +283,26 @@
       {\end{mdframed}\gdef\phu@lang{}}%
   \fi}
 \newenvironment{phuout}[1][out]
-  {\begin{list}{}{\leftmargin=2.8em \labelwidth=2.2em \labelsep=.6em
+  {\small % console lines of 80 characters fit the text width
+   \begin{list}{}{\leftmargin=2.8em \labelwidth=2.2em \labelsep=.6em
                   \topsep=2pt \partopsep=0pt \itemsep=0pt}%
-   \ifstrequal{#1}{out}{\def\phu@outcolor{accent}}{\def\phu@outcolor{inkFaint}}%
+   \ifstrequal{#1}{msg}{\def\phu@outcolor{inkFaint}}{\def\phu@outcolor{accent}}%
    \item[\textcolor{\phu@outcolor}{\footnotesize\phulabel{#1}}]}
   {\end{list}}
-\fvset{fontsize=\small, breaklines=true, breakanywhere=true, breakautoindent=true}
+\fvset{fontsize=\small}
 \newenvironment{codeoutput}{\begin{phuout}\small\ttfamily}{\end{phuout}}
 
-% --- arrays from code (phu.lua, fed by the phu display helpers) -------
-% (pdflatex) characters the helpers print
-\ifdefined\DeclareUnicodeCharacter
-  \DeclareUnicodeCharacter{2212}{\ensuremath{-}}
-  \DeclareUnicodeCharacter{22EE}{\ensuremath{\vdots}}
-  \DeclareUnicodeCharacter{22EF}{\ensuremath{\cdots}}
-  \DeclareUnicodeCharacter{22F1}{\ensuremath{\ddots}}
-\fi
-\newcommand*\phuix[1]{\text{\color{inkFaint}\scriptsize\ttfamily #1}}
-\newcommand*\phuneg[1]{\textcolor{accent}{#1}}
+% --- matrices and tables from code (phu.py / phu.R) -----------------
+% phu-output.lua wraps a matrix in phuarray and its "float64 · 3 × 4" line
+% in \phushape; \phuneg (negatives) is in phu-macros.tex, for MathJax too.
+% the gap marks in truncated tables, in both engines
+\RequirePackage{newunicodechar}
+\newunicodechar{⋮}{\ensuremath{\vdots}}
+\newunicodechar{⋯}{\ensuremath{\cdots}}
+\newunicodechar{⋱}{\ensuremath{\ddots}}
+\newunicodechar{−}{\ensuremath{-}}
+\newenvironment{phuarray}{\par\begin{center}}{\end{center}}
+\newcommand*\phushape[1]{\par\vspace{-3pt}{\footnotesize\color{inkFaint}\phulabel{#1}}}
 
 % --- two-column documents ---------------------------------------------
 % longtable (every pandoc table) refuses two-column mode. There, a

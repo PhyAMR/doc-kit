@@ -16,7 +16,7 @@ contributes:
       toc: true
       toc-depth: 3
     pdf:
-      pdf-engine: pdflatex
+      pdf-engine: lualatex
       papersize: a4
       fontsize: 11pt
       linestretch: 1.15
@@ -30,7 +30,6 @@ contributes:
       citecolor: accent
       highlight-style: phu.theme
       code-block-bg: false
-      code-overflow: wrap
       include-in-header:
         text: \usepackage{phunotes}
     html:

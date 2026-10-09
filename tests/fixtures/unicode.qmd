@@ -1,0 +1,26 @@
+---
+title: "Unicode in output"
+jupyter: python3
+---
+
+Non-ASCII text in tables and console output. pdflatex (the phu-pdf engine)
+knows Latin, Greek and many symbols through the look's fonts; the lab
+records what it can't show.
+
+```{python}
+import pandas as pd
+words = ["Müller", "naïve café", "λ = 0.5", "∑ x²", "→ ←", "½ ± ∞", "Ελληνικά",
+         "Ünïcødé", "non\u00a0breaking", "ﬁ ligature"]
+pd.DataFrame({"word": words, "len": [len(w) for w in words]})
+```
+
+```{python}
+for w in words:
+    print(w)
+```
+
+Scripts and symbols outside the fonts:
+
+```{python}
+pd.DataFrame({"word": ["日本語", "😀", "שלום"], "len": [3, 1, 4]})
+```

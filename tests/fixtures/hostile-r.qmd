@@ -1,0 +1,53 @@
+---
+title: "Hostile text: R"
+---
+
+The R counterpart of `hostile-py.qmd`.
+
+```{r}
+nasty <- c(
+  "$5 and $10", "50% off", "a & b", "#hashtag", "{braces}", "~tilde", "x^2",
+  "C:\\path\\to\\file", "a|b|c", "*stars*", "**bold**", "_under_", "<b>tag</b>",
+  "`code`", "@cite", "[link](http://x.y)", "{{< meta title >}}", "::: div",
+  "- item", "# Heading", "\\textbf{x}", "$x^2$", "\\(y\\)", "--", "...",
+  "'single' \"double\"", "1e-5", "-", "NA", "[1] 2 3", "   leading spaces", ""
+)
+frame <- data.frame(text = nasty, n = seq_along(nasty))
+frame
+```
+
+```{r}
+data.frame(`price ($)` = 1, `rate_%` = 2, `a|b` = 3, `<col>` = 4, `#n` = 5,
+           check.names = FALSE)
+```
+
+```{r}
+m <- matrix(c(1, -2, 3, 4), 2, dimnames = list(c("$a$", "<b>"), c("x_1", "y|2")))
+m
+```
+
+```{r}
+cat(nasty, sep = "\n")
+```
+
+Printed text that only looks like something else:
+
+```{r}
+cat("[[1 2]\n [3 4]]\n")
+```
+
+```{r}
+cat("   a  b\n1  1  2\n2  3  4\n")
+```
+
+```{r}
+cat("# A tibble: 2 x 2\n      a     b\n  <dbl> <dbl>\n1     1     2\n2     3     4\n")
+```
+
+```{r}
+cat("$x$ **not bold** <b>not html</b> {{< meta title >}} \\newpage\n")
+```
+
+```{r}
+"$x$ & <b>not html</b> 100%"
+```

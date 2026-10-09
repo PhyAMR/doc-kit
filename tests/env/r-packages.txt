@@ -1,0 +1,15 @@
+# R packages for the lab (installed into tests/work/R-lib by `tests/run setup`).
+# r4ds chapters
+tidyverse
+nycflights13
+palmerpenguins
+ggthemes
+janitor
+Lahman
+ggridges
+ggrepel
+patchwork
+RColorBrewer
+babynames
+# fixtures
+data.table
