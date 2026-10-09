@@ -10,6 +10,9 @@ every document. Author details: ~/.config/doc-kit/author.conf.
   newdoc book   ~/Master/4sem/Thesis/notes -t "Thesis notes"
   newdoc report reports/lab1             -t "Lab 1"
   newdoc report reports/lab1 -2          -t "Lab 1"   # two columns
+  newdoc report notes/assignments/hw1    -t "Homework 1"
+      # inside a book: also listed in the book's chapters, in the part
+      # "Assignments" (--part NAME); it still renders alone from its folder
   newdoc paper  ~/Work/CMB/v2   -t "Large-angle statistics"
   newdoc tex    draft                    -t "Draft"
   newdoc link   [DIR]          # point an existing Quarto folder's _extensions at the kit
@@ -67,12 +70,108 @@ def link_extensions(dest: Path) -> None:
     print(f"  linked _extensions -> {EXTENSIONS}")
 
 
-def cmd_new(kind: str, dest: Path, title: str | None, columns: int = 1) -> None:
+def enclosing_book(dest: Path) -> Path | None:
+    """The _quarto.yml of the book project `dest` sits in, if any."""
+    for folder in dest.parents:
+        yml = folder / "_quarto.yml"
+        if yml.is_file():
+            return yml if re.search(r"^\s*type:\s*book\b", yml.read_text(), re.M) else None
+    return None
+
+
+def chapter_files(items) -> list[str]:
+    out = []
+    for item in items or []:
+        if isinstance(item, str):
+            out.append(item)
+        elif isinstance(item, dict):
+            out += [item["file"]] if "file" in item else []
+            out += chapter_files(item.get("chapters"))
+    return out
+
+
+def add_to_book(yml: Path, chapter: str, part: str) -> bool:
+    """List `chapter` in the book's chapters, at the end of the part `part`
+    (made at the end of the chapters if missing, before a closing
+    references.qmd). Edits the text, so comments and layout stay; False when
+    the layout isn't one this understands."""
+    lines = yml.read_text().splitlines(keepends=True)
+    if lines and not lines[-1].endswith("\n"):
+        lines[-1] += "\n"
+
+    def indent(i):
+        return len(lines[i]) - len(lines[i].lstrip(" "))
+
+    def content(i):
+        return lines[i].strip() != "" and not lines[i].lstrip().startswith("#")
+
+    def item(i):
+        return lines[i].lstrip().startswith("-")
+
+    book = next((i for i, line in enumerate(lines) if re.match(r"book:\s*$", line)), None)
+    if book is None:
+        return False
+    end = next((i for i in range(book + 1, len(lines)) if re.match(r"[^\s#]", lines[i])), len(lines))
+    key = next((i for i in range(book + 1, end) if re.match(r"\s+chapters:\s*$", lines[i])), None)
+    if key is None:
+        return False
+    last = key   # last line of the chapters list
+    for i in range(key + 1, end):
+        if not content(i):
+            continue
+        if indent(i) < indent(key) or (indent(i) == indent(key) and not item(i)):
+            break
+        last = i
+    items = [i for i in range(key + 1, last + 1) if content(i) and item(i)]
+    if not items:
+        return False
+    top = [i for i in items if indent(i) == indent(items[0])]
+    # lists flush with their key (PyYAML's style) or indented under it
+    step = 0 if indent(items[0]) == indent(key) else 2
+
+    for n, i in enumerate(top):
+        m = re.match(r"\s*-\s*part:\s*(.+?)\s*$", lines[i])
+        if not (m and m.group(1).strip("'\"").lower() == part.lower()):
+            continue
+        block_end = top[n + 1] - 1 if n + 1 < len(top) else last
+        sub = next((k for k in range(i + 1, block_end + 1) if re.match(r"\s+chapters:\s*$", lines[k])), None)
+        if sub is None:
+            return False
+        at = max(k for k in range(sub, block_end + 1) if content(k))
+        kids = [k for k in range(sub + 1, at + 1) if content(k) and item(k)]
+        lines.insert(at + 1, " " * (indent(kids[0]) if kids else indent(sub) + step) + f"- {chapter}\n")
+        break
+    else:
+        at = last + 1
+        if re.match(r"\s*-\s*references\.qmd\s*$", lines[top[-1]]):
+            at = top[-1]
+        col = indent(top[0])
+        lines[at:at] = [" " * col + f'- part: "{part}"\n', " " * (col + 2) + "chapters:\n",
+                        " " * (col + 2 + step) + f"- {chapter}\n"]
+
+    text = "".join(lines)
+    try:
+        import yaml
+    except ImportError:
+        pass
+    else:
+        try:
+            if chapter not in chapter_files((yaml.safe_load(text) or {}).get("book", {}).get("chapters")):
+                return False
+        except yaml.YAMLError:
+            return False
+    yml.write_text(text)
+    return True
+
+
+def cmd_new(kind: str, dest: Path, title: str | None, columns: int = 1,
+            part: str = "Assignments") -> None:
     if dest.exists() and any(dest.iterdir()):
         die(f"{dest} is not empty (use `newdoc link {dest}` for an existing project)")
     title = title or dest.name.replace("-", " ").replace("_", " ").capitalize()
-    subs = {"TITLE": title, "COLUMNS": "twocolumn" if columns == 2 else "onecolumn", **author_vars()}
     stem = slugify(dest.name)
+    subs = {"TITLE": title, "SLUG": stem, "COLUMNS": "twocolumn" if columns == 2 else "onecolumn",
+            **author_vars()}
 
     src = PROJECTS / kind
     for path in sorted(src.rglob("*")):
@@ -96,6 +195,16 @@ def cmd_new(kind: str, dest: Path, title: str | None, columns: int = 1) -> None:
     main = next((p for p in (dest / f"{stem}.qmd", dest / f"{stem}.tex",
                              dest / "chapters/01-introduction.qmd") if p.exists()), dest)
     print(f"{kind} created: {main}")
+    book = enclosing_book(dest) if kind == "report" else None
+    if book:
+        chapter = main.relative_to(book.parent).as_posix()
+        if chapter in book.read_text():
+            print(f"  already in {book}")
+        elif add_to_book(book, chapter, part):
+            print(f'  added to {book} (part "{part}"); it also renders alone from {dest.name}/')
+        else:
+            print(f"  inside the book {book.parent}: list it in the chapters of {book.name}:\n"
+                  f"    - {chapter}")
 
 
 def cmd_link(dest: Path) -> None:
@@ -112,12 +221,14 @@ def main() -> None:
     p.add_argument("-t", "--title")
     p.add_argument("-2", "--two-column", action="store_true",
                    help="report in two columns (wide figures: #| fig-env: figure*)")
+    p.add_argument("--part", default="Assignments",
+                   help="report inside a book: the part of the book it goes in (default: Assignments)")
     args = p.parse_args()
     dest = Path(args.dir).expanduser().resolve()
     if args.kind == "link":
         cmd_link(dest)
     else:
-        cmd_new(args.kind, dest, args.title, 2 if args.two_column else 1)
+        cmd_new(args.kind, dest, args.title, 2 if args.two_column else 1, args.part)
 
 
 if __name__ == "__main__":

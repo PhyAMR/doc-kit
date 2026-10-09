@@ -139,8 +139,18 @@ def generated_units(formats):
         subprocess.run([*newdoc, "book", str(build / "book"), "-t", "Lab book"],
                        check=True, capture_output=True)
 
+    def book_report(build):   # a report inside a book: a chapter, and alone
+        book(build)
+        subprocess.run([*newdoc, "report", str(build / "book" / "assignments" / "hw1"),
+                        "-t", "Homework 1"], check=True, capture_output=True)
+
     units = [Unit("newdoc-report", f, ["report.qmd"], report, to=f, cwd="report")
              for f in formats if f.startswith("phu-")]
+    units += [Unit("newdoc-book-report", f, ["."], book_report, to=f, cwd="book")
+              for f in ("phu-pdf", "phu-html", "phu-epub") if f in formats]
+    if "phu-pdf" in formats:
+        units.append(Unit("newdoc-book-report", "alone-phu-pdf", ["hw1.qmd"], book_report,
+                          to="phu-pdf", cwd="book/assignments/hw1"))
     for f in ("phu-pdf", "phu-html"):
         if f in formats:
             units.append(Unit("newdoc-book", f, ["."], book, to=f, cwd="book"))

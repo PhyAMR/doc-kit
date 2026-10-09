@@ -7,6 +7,7 @@ document that uses it.
 ```bash
 newdoc book   ~/thesis/notes -t "Thesis notes"   # Quarto book (PDF + HTML + EPUB)
 newdoc report lab1   -t "Lab 1"                   # one Quarto document
+newdoc report notes/assignments/hw1 -t "HW 1"     # ... also a chapter of the book in notes/
 newdoc paper  cmb-v2 -t "Large-angle statistics"  # Quarto + Elsevier journal format
 newdoc tex    draft  -t "Draft"                   # plain LaTeX
 newdoc link   [DIR]  # point an existing Quarto folder at the kit
@@ -38,6 +39,15 @@ mybook/
 A book also gets `_quarto-chapter.yml`: `quarto render chapters/x.qmd --profile
 chapter` renders one chapter on its own (into `_chapter/`, keeping its number
 with `-M phu-chapter-offset:N -M number-offset:[N]`).
+
+A report is a project of its own (`_quarto.yml` with `type: default`), so
+`quarto render` in its folder renders it alone even inside a book. Made inside a
+book's folder, `newdoc report` also lists it in the book's `chapters:` (part
+"Assignments", or `--part NAME`). Its header has `phu-report: true`: in the book
+its title becomes the chapter title, its `#` sections move one level down, its
+subtitle, authors, date and abstract go under the chapter title and its
+bibliography joins the book's. Labels start with the report's name
+(`#sec-hw1-intro`) so they stay unique in the book.
 
 Quarto doesn't follow links *inside* `_extensions`, so the whole folder is
 linked. LaTeX documents use `\usepackage{phunotes}`, found through

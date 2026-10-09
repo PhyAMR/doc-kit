@@ -40,3 +40,9 @@ div.sourceCode { border-top: 1px solid; border-bottom: 1px solid #c9c0ad; }
 table { border-collapse: collapse; }
 thead tr { border-top: 1.5px solid; border-bottom: 0.8px solid; }
 tbody tr:last-child { border-bottom: 1.5px solid; }
+
+/* a report as a book chapter (phu.lua): subtitle, byline, abstract */
+.phu-report { margin: -0.5em 0 2em; }
+.phu-report .subtitle p { font-style: italic; font-size: 1.15em; margin: 0; }
+.phu-report .byline p { font-variant: small-caps; letter-spacing: 0.05em; opacity: 0.7; margin: 0.3em 0 1em; }
+.phu-report .abstract { font-size: 0.92em; margin: 0 2em; }

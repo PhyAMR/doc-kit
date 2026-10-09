@@ -26,6 +26,16 @@
      never reads its text. What a displayed value becomes is decided in
      the kernels by its type (python/phu.py, r/phu.R). Code is never
      changed.
+
+  5. Reports in a book. A report (phu-report: true, the report template)
+     renders on its own, and a book can list it as a chapter: its title
+     becomes the chapter title and its sections (# ...) move one level
+     down. HTML renders each chapter as its own page, where Quarto shows
+     the report's subtitle, author, date and abstract. PDF and EPUB render
+     the book as one document; Quarto marks where each file starts
+     (quarto-file-metadata) and leaves the chapter's front matter in a
+     .quarto-title-block code block, which becomes the report's header
+     here, and the report's bibliography is added to the book's.
 --]]
 
 local MACROS = quarto.utils.resolve_path("phu-macros.tex")
@@ -180,6 +190,140 @@ local function is_latex(fmt)
   return fmt == "latex" or fmt == "tex"
 end
 
+-- 5. reports in a book ---------------------------------------------------
+local function truthy(v)
+  return v == true or pandoc.utils.stringify(v or "") == "true"
+end
+
+-- The JSON in Quarto's <!-- quarto-file-metadata: base64 --> marker
+local function file_marker(b)
+  local raw = b.t == "RawBlock" and b
+    or b.t == "Para" and #b.content == 1 and b.content[1].t == "RawInline" and b.content[1]
+  local data = raw and raw.format == "html" and
+    raw.text:match("^<!%-%- quarto%-file%-metadata: (%S+) %-%->$")
+  if not data then return nil end
+  local ok, info = pcall(function() return quarto.json.decode(quarto.base64.decode(data)) end)
+  return ok and info or nil
+end
+
+local function shift_headers(blocks)
+  return pandoc.Blocks(blocks):walk({ Header = function(h)
+    h.level = h.level + 1
+    return h
+  end })
+end
+
+local MONTHS = { "January", "February", "March", "April", "May", "June", "July",
+  "August", "September", "October", "November", "December" }
+
+-- "2026-10-01" / today -> "October 1, 2026", as Quarto shows dates
+local function long_date(s)
+  if s == "today" or s == "now" or s == "last-modified" then s = os.date("%Y-%m-%d") end
+  local y, m, d = s:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)")
+  if not y then return s end
+  return ("%s %d, %s"):format(MONTHS[tonumber(m)], tonumber(d), y)
+end
+
+local function author_names(author)
+  local list = pandoc.utils.type(author) == "List" and author or { author }
+  local out = {}
+  for _, a in ipairs(list) do
+    local name = pandoc.utils.type(a) == "table" and a.name or a
+    if pandoc.utils.type(name) == "table" then -- name: {given, family} or {literal}
+      name = name.literal or pandoc.utils.stringify(name.given or "") .. " " ..
+        pandoc.utils.stringify(name.family or "")
+    end
+    name = pandoc.utils.stringify(name or ""):match("^%s*(.-)%s*$")
+    if name ~= "" then table.insert(out, name) end
+  end
+  return out
+end
+
+-- The report's subtitle, "authors · date" and abstract under the chapter
+-- title (PDF and EPUB; Quarto's own block shows only subtitle and abstract)
+local function report_header(meta)
+  local line = table.concat(author_names(meta.author), ", ")
+  if meta.date then
+    local date = long_date(pandoc.utils.stringify(meta.date))
+    line = line == "" and date or line .. " · " .. date
+  end
+  local abstract = meta.abstract and as_blocks(meta.abstract) or pandoc.Blocks({})
+  if quarto.doc.is_format("latex") and LOOK then
+    local blocks = pandoc.Blocks({ pandoc.RawBlock("latex", ("\\begin{phureport}{%s}{%s}"):format(
+      meta.subtitle and latex_inlines(meta.subtitle) or "", latex_inlines(pandoc.Inlines(line)))) })
+    if #abstract > 0 then blocks:insert(pandoc.RawBlock("latex", "\\phureportabstract")) end
+    blocks:extend(abstract)
+    blocks:insert(pandoc.RawBlock("latex", "\\end{phureport}"))
+    return blocks
+  end
+  local content = pandoc.Blocks({})
+  if meta.subtitle then
+    content:insert(pandoc.Div(pandoc.Para(meta.subtitle), pandoc.Attr("", { "subtitle" })))
+  end
+  if line ~= "" then
+    content:insert(pandoc.Div(pandoc.Para(pandoc.Inlines(line)), pandoc.Attr("", { "byline" })))
+  end
+  if #abstract > 0 then
+    content:insert(pandoc.Div(abstract, pandoc.Attr("", { "abstract" })))
+  end
+  return pandoc.Blocks({ pandoc.Div(content, pandoc.Attr("", { "phu-report" })) })
+end
+
+local function as_list(v)
+  if v == nil then return pandoc.List() end
+  return pandoc.utils.type(v) == "List" and v or pandoc.List({ v })
+end
+
+-- Quarto's book: HTML renders each chapter alone (the report's metadata is
+-- the document's), PDF and EPUB one document holding every chapter.
+local function reports_in_book(doc)
+  local meta = doc.meta
+  if not meta.book or truthy(meta["phu-chapter-preview"]) then return nil end
+  if truthy(meta["phu-report"]) then
+    doc.blocks = shift_headers(doc.blocks)
+    return doc
+  end
+  local out, found, in_report, dir = pandoc.Blocks({}), false, false, "."
+  local bibs = as_list(meta.bibliography)
+  for _, b in ipairs(doc.blocks) do
+    local marker = file_marker(b)
+    if marker and marker.bookItemType then -- the next chapter (or part, appendix)
+      in_report, dir = false, marker.resourceDir or "."
+      out:insert(b)
+    elseif b.t == "Div" and b.classes:find_if(function(c) return c:match("^quarto%-book%-") end) then
+      in_report = false
+      out:insert(b)
+    elseif b.t == "CodeBlock" and b.classes:includes("quarto-title-block") then
+      local fm = pandoc.read(b.text, "markdown").meta
+      if truthy(fm["phu-report"]) then
+        found, in_report = true, true
+        out:extend(report_header(fm))
+        for _, bib in ipairs(as_list(fm.bibliography)) do
+          bibs:insert(pandoc.path.normalize(pandoc.path.join({ dir, pandoc.utils.stringify(bib) })))
+        end
+      else
+        out:insert(b)
+      end
+    else
+      out:extend(in_report and shift_headers({ b }) or { b })
+    end
+  end
+  if not found then return nil end
+  doc.blocks = out
+  if #bibs > 0 then
+    local seen, unique = {}, pandoc.List()
+    for _, bib in ipairs(bibs) do
+      local path = pandoc.utils.stringify(bib)
+      if not seen[path] then
+        seen[path] = true
+        unique:insert(pandoc.MetaString(path))
+      end
+    end
+    doc.meta.bibliography = unique
+  end
+  return doc
+end
+
 return {
   {
     Meta = function(meta)
@@ -193,8 +337,9 @@ return {
         end
         -- chapter preview (book template's _quarto-chapter.yml): no title
         -- page, and the chapter keeps its number in the book
-        -- (quarto_view passes phu-chapter-offset, and number-offset for HTML)
-        if meta["phu-chapter-preview"] then
+        -- (quarto_view passes phu-chapter-offset, and number-offset for HTML);
+        -- a report keeps its own title page
+        if meta["phu-chapter-preview"] and not truthy(meta["phu-report"]) then
           local offset = tonumber(pandoc.utils.stringify(meta["phu-chapter-offset"] or "0")) or 0
           quarto.doc.include_text("in-header", "\\AtBeginDocument{\\let\\maketitle\\relax" ..
             "\\ifcsname c@chapter\\endcsname\\setcounter{chapter}{" .. offset .. "}\\fi}")
@@ -227,4 +372,5 @@ return {
       return pandoc.Para({ pandoc.Image({}, src, "", pandoc.Attr("", { "phu-svg" })) })
     end,
   },
+  { Pandoc = reports_in_book },
 }

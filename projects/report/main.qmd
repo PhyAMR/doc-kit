@@ -3,6 +3,11 @@ title: "{{TITLE}}"
 author: "{{AUTHOR}}"
 date: today
 bibliography: references.bib
+# Renders on its own (`quarto render` in this folder) and, listed in a
+# book's chapters, as a chapter: the title becomes the chapter title and
+# the # sections move one level down. Labels start with the report's name
+# so they stay unique in the book.
+phu-report: true
 format:
   phu-pdf:
     documentclass: scrartcl
@@ -10,6 +15,6 @@ format:
   phu-html: default
 ---
 
-# Introduction {#sec-intro}
+# Introduction {#sec-{{SLUG}}-intro}
 
 $\E[X] \in \R$.

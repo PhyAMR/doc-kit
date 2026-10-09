@@ -1,0 +1,4 @@
+# The report is a project of its own, so `quarto render` here renders it
+# alone even inside a book's folder (the book lists it as a chapter).
+project:
+  type: default

@@ -130,6 +130,21 @@
   \fi
 \fi
 
+% --- a report as a book chapter ---------------------------------------
+% phu.lua puts this under the chapter title of a report in a book:
+% \begin{phureport}{subtitle}{authors · date} abstract \end{phureport}
+\newenvironment{phureport}[2]{%
+  \par\vspace*{-1.2\baselineskip}%
+  \if\relax\detokenize{#1}\relax\else
+    {\raggedright\large\itshape\color{inkSoft}#1\par}\vspace{.3\baselineskip}\fi
+  \if\relax\detokenize{#2}\relax\else
+    {\raggedright\color{inkFaint}\phulabel{#2}\par}\fi
+  \vspace{.7\baselineskip}%
+  \begingroup\small\leftskip=2em\rightskip=2em\relax
+}{\par\endgroup\vspace{.2\baselineskip}}
+\newcommand*\phureportabstract{%
+  {\color{inkFaint}\phulabel{Abstract}}\par\nobreak\vspace{.2\baselineskip}}
+
 % --- theorem-like environments ----------------------------------------
 % Quarto creates them with \theoremstyle{plain|definition|remark}; a hook
 % swaps those styles for ours inside each environment, and an mdframed
